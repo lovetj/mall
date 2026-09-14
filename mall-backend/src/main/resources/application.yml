@@ -58,7 +58,8 @@ logging:
     org.springframework: info
 
 file:
-  base-server: http://2uu4401930iw.vicp.fun:32105/sunny_file
+#  base-server: http://2uu4401930iw.vicp.fun:32105/sunny_file
+  base-server: http://localhost:8081/sunny_file
   base-path: D:\\soft\\apache-tomcat-8.5.63\\webapps\\sunny_file
 
 # ==================== 支付配置 ====================

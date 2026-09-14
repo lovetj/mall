@@ -1,0 +1,2 @@
+<!--网页承载页-->
+<web-view wx:if="{{url}}" src="{{url}}" binderror="onError"></web-view>

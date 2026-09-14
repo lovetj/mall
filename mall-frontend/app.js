@@ -1,6 +1,7 @@
 /**app.js**/
 const auth = require('./utils/auth')
 const guard = require('./utils/guard')
+const config = require('./utils/config')
 
 App({
   globalData: {
@@ -11,7 +12,10 @@ App({
     isLogin: false,
     userInfo: null,
     /** 登录成功后需要回跳的页面（由 guard 统一处理） */
-    pendingAction: null
+    pendingAction: null,
+    /** 全局公共常量供页面读取 */
+    BASE_URL: config.BASE_URL,
+    FILE_BASE_SERVER: config.FILE_BASE_SERVER
   },
 
   onLaunch() {

@@ -47,6 +47,44 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
 
     @Override
     public List<Product> listHotselling(Integer status) {
+        List<Product> result = getFilteredHotsellingProducts(status);
+        urlUtil.resolveProducts(result);
+        return result;
+    }
+
+    @Override
+    public PageResult<Product> pageHotselling(PageDTO pageDTO) {
+        PageDTO query = pageDTO != null ? pageDTO : new PageDTO();
+        List<Product> filtered = getFilteredHotsellingProducts(query.getStatus());
+        if (StringUtils.hasText(query.getKeyword())) {
+            String kw = query.getKeyword().trim();
+            filtered = filtered.stream()
+                    .filter(p -> p.getName() != null && p.getName().contains(kw))
+                    .collect(Collectors.toList());
+        }
+        Long categoryId = query.getCategoryId();
+        if (categoryId != null) {
+            filtered = filtered.stream()
+                    .filter(p -> categoryId.equals(p.getCategoryId()))
+                    .collect(Collectors.toList());
+        }
+        long total = filtered.size();
+        int pageNum = query.getPageNum() != null && query.getPageNum() > 0 ? query.getPageNum() : 1;
+        int pageSize = query.getPageSize() != null && query.getPageSize() > 0 ? query.getPageSize() : 10;
+        long pages = (total + pageSize - 1) / pageSize;
+        int fromIndex = (pageNum - 1) * pageSize;
+        List<Product> records;
+        if (fromIndex >= total) {
+            records = Collections.emptyList();
+        } else {
+            int toIndex = (int) Math.min(fromIndex + pageSize, total);
+            records = new ArrayList<>(filtered.subList(fromIndex, toIndex));
+        }
+        urlUtil.resolveProducts(records);
+        return new PageResult<>(records, total, pages, (long) pageNum, (long) pageSize);
+    }
+
+    private List<Product> getFilteredHotsellingProducts(Integer status) {
         List<ProductTag> hotTags = productTagMapper.selectList(
                 new LambdaQueryWrapper<ProductTag>()
                         .eq(ProductTag::getIsHotselling, 1)
@@ -60,7 +98,7 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         if (allProducts == null || allProducts.isEmpty()) {
             return Collections.emptyList();
         }
-        List<Product> result = allProducts.stream()
+        return allProducts.stream()
                 .filter(p -> {
                     if (status != null && !status.equals(p.getStatus())) {
                         return false;
@@ -85,8 +123,6 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
                     return 0;
                 })
                 .collect(Collectors.toList());
-        urlUtil.resolveProducts(result);
-        return result;
     }
 
     private List<Long> parseTagIds(String tagsStr) {
@@ -120,6 +156,9 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
 
     @Override
     public PageResult<Product> pageList(PageDTO pageDTO) {
+        if (pageDTO != null && pageDTO.getIsHotselling() != null && pageDTO.getIsHotselling() == 1) {
+            return pageHotselling(pageDTO);
+        }
         Page<Product> page = new Page<>(pageDTO.getPageNum(), pageDTO.getPageSize());
         IPage<Product> result = baseMapper.selectPageWithCategory(page, pageDTO.getKeyword(), pageDTO.getCategoryId(), pageDTO.getStatus());
         List<Product> records = result.getRecords();

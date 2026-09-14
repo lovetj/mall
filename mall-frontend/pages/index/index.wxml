@@ -9,6 +9,23 @@
     </view>
   </view>
 
+  <!-- 商品分类 -->
+  <view class="cate-wrap" wx:if="{{categories.length > 0}}">
+    <view
+      class="cate-item"
+      wx:for="{{categories}}"
+      wx:key="id"
+      data-index="{{index}}"
+      bindtap="onCategoryTap"
+    >
+      <view class="cate-icon">
+        <image wx:if="{{item.icon}}" src="{{item.icon}}" mode="aspectFill" lazy-load />
+        <text wx:else>🏷️</text>
+      </view>
+      <text class="cate-name">{{item.name}}</text>
+    </view>
+  </view>
+
   <!-- 轮播图 -->
   <view class="banner-wrap">
     <swiper
@@ -18,32 +35,58 @@
       indicator-active-color="#ffffff"
       autoplay
       circular
-      interval="3000"
-      duration="400"
+      interval="4000"
+      duration="600"
     >
       <swiper-item wx:for="{{banners}}" wx:key="id">
-        <view class="banner-item">
+        <view
+          class="banner-item {{item.link ? 'has-link' : ''}} {{activeBanner === index ? 'is-pressed' : ''}}"
+          data-index="{{index}}"
+          bindtouchstart="onBannerTouchStart"
+          bindtouchend="onBannerTouchEnd"
+          bindtouchcancel="onBannerTouchEnd"
+          bindtap="onBannerTap"
+        >
           <image src="{{item.image}}" mode="aspectFill" lazy-load></image>
-          <view class="banner-title">{{item.title}}</view>
+          <view class="banner-title" wx:if="{{item.title}}">{{item.title}}</view>
+          <view class="banner-link-tip" wx:if="{{item.link}}">查看详情 ›</view>
         </view>
       </swiper-item>
     </swiper>
   </view>
 
   <!-- 热销商品 -->
-  <view class="section-title">
-    <text>🔥 热销商品</text>
-    <text class="more" bindtap="goCategory">查看更多 ›</text>
-  </view>
-  <view class="hot-grid">
-    <goods-card
-      wx:for="{{hotGoods}}"
-      wx:key="id"
-      goods="{{item}}"
-      layout="grid"
-      bind:addcart="onAddCart"
-      bind:goodstap="onGoodsTap"
-    />
+  <view class="hot-section">
+    <view class="section-title">
+      <text>🔥 热销商品</text>
+      <view class="more" bindtap="goHotCategory">
+        <text class="more-text">查看更多</text>
+        <text class="more-arrow">››</text>
+      </view>
+    </view>
+    <view class="section-subtitle">精选好货 品质保证</view>
+    <view class="hot-grid">
+      <goods-card
+        class="hot-item"
+        wx:for="{{hotGoods}}"
+        wx:key="id"
+        goods="{{item}}"
+        layout="grid"
+        bind:addcart="onAddCart"
+        bind:goodstap="onGoodsTap"
+      />
+    </view>
+
+    <!-- 加载中与到底了提示 -->
+    <view class="loading-more-bar" wx:if="{{loadingMore}}">
+      <view class="loading-spin"></view>
+      <text class="loading-text">加载中...</text>
+    </view>
+    <view class="no-more-bar" wx:elif="{{noMore && hotGoods.length > 0}}">
+      <view class="no-more-line"></view>
+      <text class="no-more-text">到底了</text>
+      <view class="no-more-line"></view>
+    </view>
   </view>
   <view class="tabbar-placeholder"></view>
 

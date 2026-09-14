@@ -13,6 +13,8 @@ public interface ProductService extends IService<Product> {
 
     List<Product> listHotselling(Integer status);
 
+    PageResult<Product> pageHotselling(PageDTO pageDTO);
+
     List<Product> listByCategoryId(Long categoryId);
 
     PageResult<Product> pageList(PageDTO pageDTO);

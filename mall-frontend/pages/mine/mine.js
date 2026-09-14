@@ -4,6 +4,8 @@ const guard = require('../../utils/guard')
 const cart = require('../../utils/cart')
 const util = require('../../utils/util')
 const modalMixin = require('../../utils/modal-mixin')
+const api = require('../../utils/api')
+const { formatImageUrl } = require('../../utils/config')
 
 Page(Object.assign({}, modalMixin, {
   data: {
@@ -47,10 +49,29 @@ Page(Object.assign({}, modalMixin, {
 
   refreshUser() {
     const { userInfo } = auth.getLoginState()
-    this.setData({
-      userInfo: userInfo || {},
-      cartCount: cart.getCartCount()
-    })
+    if (userInfo) {
+      this.setData({
+        userInfo: {
+          ...userInfo,
+          avatarUrl: formatImageUrl(userInfo.avatar || userInfo.avatarUrl)
+        },
+        cartCount: cart.getCartCount()
+      })
+    }
+
+    // 从后端刷新最新的用户信息
+    api.getUserInfo().then((user) => {
+      if (user) {
+        const updated = {
+          nickName: user.nickname || user.username || '微信用户',
+          avatarUrl: formatImageUrl(user.avatar),
+          ...user
+        }
+        this.setData({ userInfo: updated })
+        const { token } = auth.getLoginState()
+        auth.setLoginState(token, updated)
+      }
+    }).catch(() => {})
   },
 
   /** 供购物车变更时刷新 */

@@ -4,6 +4,8 @@ const cart = require('../../utils/cart')
 const guard = require('../../utils/guard')
 const util = require('../../utils/util')
 const modalMixin = require('../../utils/modal-mixin')
+const api = require('../../utils/api')
+const { formatImageUrl } = require('../../utils/config')
 
 Page(Object.assign({}, modalMixin, {
   data: {
@@ -13,7 +15,15 @@ Page(Object.assign({}, modalMixin, {
     currentIcon: '',
     goodsList: [],
     keyword: '',
-    searchFocus: false
+    searchFocus: false,
+    // 右侧列表 scroll-view 自带下拉刷新状态（页面级下拉刷新在 scroll-view 滚动区不生效）
+    refresherTriggered: false,
+    // 商品分页状态
+    pageNum: 1,
+    pageSize: 6,
+    total: 0,
+    loadingMore: false,
+    noMore: false
   },
 
   /**
@@ -24,16 +34,233 @@ Page(Object.assign({}, modalMixin, {
   focusOnShow: false,
 
   onLoad() {
+    this.loadCategories()
+  },
+
+  /** 加载分类与首个分类商品（固定前置「全部」「热销商品」两个虚拟分类） */
+  loadCategories() {
+    return api.getCategoryList().then((res) => {
+      const list = res || []
+      const categories = [
+        { id: 'all', name: '全部', icon: '🧺' },
+        { id: 'hot', name: '热销商品', icon: '🔥' },
+        ...list.map((c) => {
+          const icon = formatImageUrl(c.icon)
+          return {
+            id: c.id,
+            name: c.name,
+            icon: icon || '🏷️',
+            isImg: !!icon
+          }
+        })
+      ]
+      const first = categories[0]
+      this.setData({
+        categories,
+        currentId: first.id,
+        currentName: first.name,
+        currentIcon: first.icon
+      })
+      // 首页带分类跳转进来时（分类尚未加载完暂存的意图），定位到指定分类
+      if (this.pendingCategory) {
+        const pending = this.pendingCategory
+        this.pendingCategory = null
+        this.selectCategory(pending)
+      } else {
+        this.loadProducts(first.id)
+      }
+    }).catch(() => {
+      this.useMockCategories()
+    })
+  },
+
+  useMockCategories() {
     const categories = mock.categories
-    // 默认选中第一项（"全部"）
     const first = categories[0]
     this.setData({
       categories,
       currentId: first.id,
       currentName: first.name,
       currentIcon: first.icon,
-      goodsList: mock.getGoodsByCategory(first.id)
+      goodsList: mock.getGoodsByCategory(first.id),
+      pageNum: 1,
+      total: 0,
+      noMore: true,
+      loadingMore: false
     })
+    if (this.pendingCategory) {
+      const pending = this.pendingCategory
+      this.pendingCategory = null
+      this.selectCategory(pending)
+    }
+  },
+
+  /**
+   * 刷新数据：左侧分类与右侧商品列表一起重新拉取
+   * 保留当前选中的分类与搜索关键字，不把页面重置回「全部」；
+   * 分类刷新后按 id 重新对齐 currentName（分类可能被改名或删除）
+   * @returns {Promise} 两侧数据都处理完成后 resolve（不会 reject）
+   */
+  refreshPageData() {
+    const categoryId = this.data.currentId
+    const keyword = this.data.keyword.trim()
+
+    const reloadCategories = this.refreshCategories(categoryId)
+    const reloadProducts = this.loadProducts(categoryId, keyword, true)
+
+    return Promise.all([reloadCategories, reloadProducts])
+      .catch(() => {})
+      .then(() => {
+        this.syncTabBar()
+      })
+  },
+
+  /**
+   * 页面级下拉刷新：左侧分类与右侧商品列表一起重新拉取
+   * 仅当手势落在 scroll-view 之外的空白区域时才会命中（页面未滚动状态下）
+   */
+  onPullDownRefresh() {
+    this.refreshPageData().then(() => {
+      wx.stopPullDownRefresh()
+    })
+  },
+
+  /**
+   * 右侧商品列表 scroll-view 下拉刷新
+   * scroll-view 的滚动区域会拦截下拉手势，页面级 onPullDownRefresh 不会触发，
+   * 因此列表区域用 scroll-view 自带的 refresher 实现，刷新逻辑与页面级共用 refreshPageData
+   */
+  onRefresherRefresh() {
+    this.setData({ refresherTriggered: true })
+    this.refreshPageData().then(() => {
+      this.setData({ refresherTriggered: false })
+    })
+  },
+
+  /**
+   * 重新拉取左侧分类列表（下拉刷新用），并按 id 对齐当前选中项
+   * - 当前选中的是「全部 / 热销商品」虚拟分类时直接保留
+   * - 选中分类已被删除时回退到「全部」
+   * @param {string|number} currentId 刷新前选中的分类 id
+   */
+  refreshCategories(currentId) {
+    return api.getCategoryList().then((res) => {
+      const list = res || []
+      const categories = [
+        { id: 'all', name: '全部', icon: '🧺' },
+        { id: 'hot', name: '热销商品', icon: '🔥' },
+        ...list.map((c) => {
+          const icon = formatImageUrl(c.icon)
+          return {
+            id: c.id,
+            name: c.name,
+            icon: icon || '🏷️',
+            isImg: !!icon
+          }
+        })
+      ]
+      const matched = categories.find((c) => c.id === currentId)
+      const target = matched || categories[0]
+      // 搜索中标题为「搜索：xxx」，此时只更新左侧列表，不动标题
+      const searching = !!this.data.keyword.trim()
+      const patch = { categories }
+      if (target.id !== currentId) {
+        patch.currentId = target.id
+        patch.currentIcon = target.icon
+        if (!searching) patch.currentName = target.name
+      } else if (!searching) {
+        patch.currentName = target.name
+      }
+      this.setData(patch)
+    }).catch(() => {})
+  },
+
+  /**
+   * 加载分类下的商品（分页）
+   * hot  -> /product/hotselling/page（仅上架中的热销商品）
+   * 其它 -> /product/page（全部 / 按分类 / 按关键字，后端 name 模糊匹配）
+   * @param {string|number} categoryId 分类 id：'all' | 'hot' | 后端分类 id
+   * @param {string} keyword 关键字
+   * @param {boolean} reset true=重置到第 1 页；false=追加下一页
+   */
+  loadProducts(categoryId, keyword = '', reset = true) {
+    // 追加模式下防重复请求；重置模式允许打断（由请求序号丢弃过期结果）
+    if (!reset && this.data.loadingMore) return Promise.resolve()
+    const pageSize = this.data.pageSize
+    const pageNum = reset ? 1 : this.data.pageNum + 1
+
+    const params = { pageNum, pageSize }
+    if (categoryId === 'hot') {
+      params.status = 1
+    } else if (categoryId && categoryId !== 'all') {
+      params.categoryId = categoryId
+    }
+    if (keyword && keyword.trim()) {
+      params.keyword = keyword.trim()
+    }
+
+    // 记录当前查询条件，供触底加载下一页时复用
+    this._query = { categoryId, keyword: params.keyword || '' }
+    const seq = (this._loadSeq = (this._loadSeq || 0) + 1)
+    this.setData({ loadingMore: true })
+
+    const request = categoryId === 'hot'
+      ? api.getHotsellingPage(params)
+      : api.getProductPage(params)
+
+    return request.then((res) => {
+      if (seq !== this._loadSeq) return
+      const records = (res && Array.isArray(res.records))
+        ? res.records
+        : (Array.isArray(res) ? res : [])
+      const formatted = records.map((item) => ({
+        ...item,
+        image: formatImageUrl(item.image)
+      }))
+      const total = res && typeof res.total === 'number' ? res.total : formatted.length
+      const pages = res && typeof res.pages === 'number'
+        ? res.pages
+        : Math.ceil(total / pageSize)
+      const goodsList = reset
+        ? formatted
+        : (this.data.goodsList || []).concat(formatted)
+      const noMore = goodsList.length >= total || pageNum >= pages
+
+      this.setData({
+        goodsList,
+        pageNum,
+        total,
+        noMore,
+        loadingMore: false
+      })
+    }).catch(() => {
+      if (seq !== this._loadSeq) return
+      if (!reset) {
+        // 追加失败：按已到末尾处理
+        this.setData({ noMore: true, loadingMore: false })
+        return
+      }
+      // 接口异常降级到本地 mock
+      let list = mock.getGoodsByCategory(categoryId)
+      if (params.keyword) {
+        const kw = params.keyword.toLowerCase()
+        list = list.filter((item) => (item.name || '').toLowerCase().indexOf(kw) > -1)
+      }
+      this.setData({
+        goodsList: list,
+        pageNum: 1,
+        total: list.length,
+        noMore: true,
+        loadingMore: false
+      })
+    })
+  },
+
+  /** 右侧商品列表触底：加载下一页 */
+  onLoadMore() {
+    if (this.data.noMore || this.data.loadingMore) return
+    const q = this._query || { categoryId: this.data.currentId, keyword: '' }
+    this.loadProducts(q.categoryId, q.keyword, false)
   },
 
   onShow() {
@@ -91,9 +318,9 @@ Page(Object.assign({}, modalMixin, {
       currentId: first.id,
       currentName: first.name,
       currentIcon: first.icon,
-      goodsList: mock.getGoodsByCategory(first.id),
       keyword: ''
     })
+    this.loadProducts(first.id)
   },
 
   /**
@@ -109,6 +336,26 @@ Page(Object.assign({}, modalMixin, {
     })
   },
 
+  /** 供首页分类入口跳转后定位分类（按 id 或名称匹配） */
+  selectCategory(target) {
+    if (!target) return
+    const cat = this.data.categories.find(
+      (c) => c.id === target.id || c.name === target.name
+    )
+    if (!cat) {
+      // 首次进入时分类可能还没加载完，先暂存意图，加载完成后自动定位
+      this.pendingCategory = target
+      return
+    }
+    this.pendingCategory = null
+    this.setData({
+      currentId: cat.id,
+      currentName: cat.name,
+      keyword: ''
+    })
+    this.loadProducts(cat.id)
+  },
+
   /** 切换左侧类别 */
   onSelectCategory(e) {
     const { id, name } = e.currentTarget.dataset
@@ -116,36 +363,71 @@ Page(Object.assign({}, modalMixin, {
     this.setData({
       currentId: id,
       currentName: name,
-      goodsList: mock.getGoodsByCategory(id),
       keyword: ''
     })
+    this.loadProducts(id)
   },
 
+  /** 输入内容变化：防抖 400ms 后自动调用接口搜索 */
   onSearchInput(e) {
-    this.setData({ keyword: e.detail.value })
-  },
-
-  /** 搜索（在全部商品中搜索） */
-  onSearch() {
-    const keyword = this.data.keyword.trim()
-    if (!keyword) {
-      this.setData({ goodsList: mock.getGoodsByCategory(this.data.currentId) })
+    const keyword = e.detail.value
+    this.setData({ keyword })
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer)
+      this.searchTimer = null
+    }
+    const kw = keyword.trim()
+    if (!kw) {
+      // 清空输入：恢复当前分类的商品与标题
+      const currentCat = this.data.categories.find((c) => c.id === this.data.currentId)
+      this.setData({ currentName: currentCat ? currentCat.name : '全部' })
+      this.loadProducts(this.data.currentId)
       return
     }
-    const result = mock.searchGoods(keyword)
-    this.setData({
-      goodsList: result,
-      currentName: `搜索：${keyword}`
-    })
-    if (!result.length) util.toast('没有找到相关商品')
+    this.searchTimer = setTimeout(() => {
+      this.searchTimer = null
+      this.doSearch(kw)
+    }, 400)
+  },
+
+  /** 按关键字搜索（在全部商品中搜索） */
+  doSearch(keyword) {
+    this.setData({ currentName: `搜索：${keyword}` })
+    this.loadProducts('', keyword)
+  },
+
+  /** 键盘确认搜索：立即执行，不再等防抖 */
+  onSearch() {
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer)
+      this.searchTimer = null
+    }
+    const keyword = this.data.keyword.trim()
+    if (!keyword) {
+      this.loadProducts(this.data.currentId)
+      return
+    }
+    this.doSearch(keyword)
   },
 
   onClearSearch() {
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer)
+      this.searchTimer = null
+    }
+    const currentCat = this.data.categories.find((c) => c.id === this.data.currentId)
     this.setData({
       keyword: '',
-      currentName: this.data.categories.find((c) => c.id === this.data.currentId).name,
-      goodsList: mock.getGoodsByCategory(this.data.currentId)
+      currentName: currentCat ? currentCat.name : '全部'
     })
+    this.loadProducts(this.data.currentId)
+  },
+
+  onUnload() {
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer)
+      this.searchTimer = null
+    }
   },
 
   /** 加入购物车：需要登录 */
@@ -180,6 +462,27 @@ Page(Object.assign({}, modalMixin, {
 
   onGoodsTap(e) {
     const goods = e && e.detail && e.detail.goods
+    if (!goods || !goods.name) return
+    util.toast(`${goods.name} ¥${goods.price}`)
+  },
+
+  /** 列表项加购（原生渲染，无组件事件） */
+  onListAddCart(e) {
+    const idx = e.currentTarget.dataset.index
+    const goods = this.data.goodsList[idx]
+    if (!goods) return
+    guard.ensureLogin({
+      content: '登录后才能加入购物车，是否前往登录？',
+      redirect: '/pages/category/category',
+      action: { type: 'addCart', goods },
+      success: () => this.doAddCart(goods)
+    })
+  },
+
+  /** 列表项点击（原生渲染，无组件事件） */
+  onListItemTap(e) {
+    const idx = e.currentTarget.dataset.index
+    const goods = this.data.goodsList[idx]
     if (!goods || !goods.name) return
     util.toast(`${goods.name} ¥${goods.price}`)
   }

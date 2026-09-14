@@ -4,6 +4,8 @@
  * 事件：addcart（点击加购）、goodstap（点击卡片）
  * 注意：自定义事件不能命名为 tap，会与原生 tap 事件冲突导致 detail 被覆盖
  */
+const { formatImageUrl } = require('../../utils/config')
+
 Component({
   options: {
     addGlobalClass: true
@@ -19,13 +21,20 @@ Component({
     }
   },
   data: {
-    salesText: ''
+    salesText: '',
+    displayImage: ''
   },
   observers: {
     'goods.sales': function (sales) {
       const num = Number(sales || 0)
       this.setData({
         salesText: num >= 10000 ? `${(num / 10000).toFixed(1)}万` : String(num)
+      })
+    },
+    'goods.image, goods.pic': function (image, pic) {
+      const raw = image || pic || ''
+      this.setData({
+        displayImage: formatImageUrl(raw)
       })
     }
   },

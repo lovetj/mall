@@ -226,7 +226,7 @@ INSERT INTO `admin` (`username`, `password`, `real_name`, `status`) VALUES
 
 -- 初始化测试用户 (密码: 123456)
 INSERT INTO `user` (`username`, `password`, `nickname`, `phone`, `status`) VALUES
-('test', '$2a$10$f3o1ECZ6a.VZhezkmhl46uBpGmnPNmLvsRDIdjkJ/a/oNodOZJu0S', '测试用户', '13800138001', 1);
+('user', '$2a$10$rjet.LriLzGqBZ9StUj0QeBKAnojolx.fgAqVWlhC7KgvRiQSb4z.', '测试用户', '13800138001', 1);
 
 -- 用户收货地址表
 CREATE TABLE IF NOT EXISTS `address` (

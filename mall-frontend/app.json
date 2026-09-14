@@ -6,7 +6,8 @@
     "pages/mine/mine",
     "pages/login/login",
     "pages/orders/orders",
-    "pages/address/address"
+    "pages/address/address",
+    "pages/webview/webview"
   ],
   "window": {
     "backgroundTextStyle": "light",

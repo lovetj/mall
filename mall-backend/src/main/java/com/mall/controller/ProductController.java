@@ -44,8 +44,29 @@ public class ProductController {
     }
 
     @GetMapping("/hotselling")
-    public Result<List<Product>> listHotselling(@RequestParam(value = "status", required = false) Integer status) {
+    public Result<?> listHotselling(
+            @RequestParam(value = "status", required = false) Integer status,
+            @RequestParam(value = "pageNum", required = false) Integer pageNum,
+            @RequestParam(value = "pageSize", required = false) Integer pageSize,
+            PageDTO pageDTO) {
+        if (pageNum != null || pageSize != null) {
+            if (pageDTO.getStatus() == null) {
+                pageDTO.setStatus(status);
+            }
+            if (pageDTO.getPageNum() == null && pageNum != null) {
+                pageDTO.setPageNum(pageNum);
+            }
+            if (pageDTO.getPageSize() == null && pageSize != null) {
+                pageDTO.setPageSize(pageSize);
+            }
+            return Result.success(productService.pageHotselling(pageDTO));
+        }
         return Result.success(productService.listHotselling(status));
+    }
+
+    @GetMapping("/hotselling/page")
+    public Result<PageResult<Product>> pageHotselling(PageDTO pageDTO) {
+        return Result.success(productService.pageHotselling(pageDTO));
     }
 
     @GetMapping("/category/{categoryId}")

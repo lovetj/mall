@@ -4,19 +4,285 @@ const cart = require('../../utils/cart')
 const guard = require('../../utils/guard')
 const util = require('../../utils/util')
 const modalMixin = require('../../utils/modal-mixin')
+const api = require('../../utils/api')
+const { formatImageUrl } = require('../../utils/config')
 
 Page(Object.assign({}, modalMixin, {
   data: {
     banners: [],
+    // 当前按下的轮播图下标（-1 表示无），用于点击/按压动画
+    activeBanner: -1,
+    categories: [],
     hotGoods: [],
-    cartCount: 0
+    cartCount: 0,
+    // 热销商品分页状态
+    pageNum: 1,
+    pageSize: 4,
+    total: 0,
+    hasMore: true,
+    loadingMore: false,
+    noMore: false
   },
 
   onLoad() {
-    this.setData({
-      banners: mock.banners,
-      hotGoods: mock.getHotGoods(8)
+    this.loadBanners()
+    this.loadCategories()
+    this.loadHotGoods(true)
+  },
+
+  /** 下拉刷新：重新加载轮播图、分类、热销商品 */
+  onPullDownRefresh() {
+    Promise.all([
+      this.loadBanners(),
+      this.loadCategories(),
+      this.loadHotGoods(true)
+    ]).catch(() => {}).then(() => {
+      wx.stopPullDownRefresh()
     })
+  },
+
+  /** 加载轮播图 */
+  loadBanners() {
+    api.getBannerList().then((res) => {
+      const banners = (res || []).map((item) => ({
+        ...item,
+        image: formatImageUrl(item.image)
+      }))
+      this.setData({ banners })
+    }).catch(() => {
+      this.setData({ banners: [] })
+    })
+  },
+
+  /** 按下轮播图：可跳转时才触发按压动画 */
+  onBannerTouchStart(e) {
+    const index = e.currentTarget.dataset.index
+    const banner = this.data.banners[index]
+    if (!banner || !(banner.link || '').trim()) return
+    this.setData({ activeBanner: index })
+  },
+
+  /** 松开/取消：恢复正常状态 */
+  onBannerTouchEnd() {
+    if (this.data.activeBanner !== -1) {
+      this.setData({ activeBanner: -1 })
+    }
+  },
+
+  /**
+   * 点击轮播图：按 link 字段跳转（link 为空则不跳转）
+   * link 为 http(s) 链接时用 web-view 承载，否则按站内页面路径跳转
+   * 跳转前先收回按压动画，避免动画被页面切换打断
+   */
+  onBannerTap(e) {
+    const banner = this.data.banners[e.currentTarget.dataset.index]
+    const link = banner && (banner.link || '').trim()
+    if (!link) return
+
+    this.setData({ activeBanner: -1 })
+
+    const url = /^https?:\/\//.test(link)
+      ? `/pages/webview/webview?url=${encodeURIComponent(link)}`
+      : (link.charAt(0) === '/' ? link : `/${link}`)
+
+    // 留出 150ms 让回弹动画播完再跳转
+    setTimeout(() => {
+      wx.navigateTo({ url })
+    }, 150)
+  },
+
+  /** 加载商品分类 */
+  loadCategories() {
+    api.getCategoryList().then((res) => {
+      const list = res || []
+      if (list.length > 0) {
+        const categories = list.map((c) => ({
+          id: c.id,
+          name: c.name,
+          icon: formatImageUrl(c.icon)
+        }))
+        this.setData({ categories })
+      } else {
+        this.useMockCategories()
+      }
+    }).catch(() => {
+      this.useMockCategories()
+    })
+  },
+
+  /** 分类接口不可用时降级到本地 mock */
+  useMockCategories() {
+    const categories = (mock.categories || []).map((c) => ({
+      id: c.id,
+      name: c.name,
+      icon: c.icon || '🏷️'
+    }))
+    this.setData({ categories })
+  },
+
+  /** 点击分类：跳转分类页并定位到该分类 */
+  onCategoryTap(e) {
+    const item = this.data.categories[e.currentTarget.dataset.index]
+    if (!item) return
+    wx.switchTab({
+      url: '/pages/category/category',
+      success: () => {
+        // 等切换完成后再取页面实例，否则可能还停留在首页
+        const pages = getCurrentPages()
+        const page = pages[pages.length - 1]
+        if (page && page.route === 'pages/category/category' && typeof page.selectCategory === 'function') {
+          page.selectCategory(item)
+        }
+      }
+    })
+  },
+
+  /**
+   * 加载热销商品分页数据：调用 /product/hotselling/page
+   * @param {boolean} reset 是否重置（首次加载或下拉刷新）
+   */
+  loadHotGoods(reset = false) {
+    if (reset) {
+      this.setData({
+        pageNum: 1,
+        hasMore: true,
+        noMore: false,
+        loadingMore: false
+      })
+    }
+
+    const pageSize = this.data.pageSize || 6
+    const pageNum = reset ? 1 : (this.data.pageNum || 1)
+
+    return api.getHotsellingPage({
+      status: 1,
+      pageNum,
+      pageSize
+    }).then((res) => {
+      const records = (res && Array.isArray(res.records))
+        ? res.records
+        : (Array.isArray(res) ? res : [])
+
+      const formatted = records.map((item) => ({
+        ...item,
+        image: formatImageUrl(item.image)
+      }))
+
+      let hotGoods = []
+      let total = 0
+      let pages = 1
+
+      if (res && typeof res.total === 'number') {
+        total = res.total
+        pages = typeof res.pages === 'number' ? res.pages : Math.ceil(total / pageSize)
+      } else {
+        total = formatted.length
+        pages = Math.ceil(total / pageSize)
+      }
+
+      if (reset) {
+        hotGoods = formatted
+      } else {
+        hotGoods = (this.data.hotGoods || []).concat(formatted)
+      }
+
+      // 若接口返回为空且重置时，降级展示 mock 数据
+      if (hotGoods.length === 0 && reset) {
+        const mockList = mock.getHotGoods(pageSize)
+        this.setData({
+          hotGoods: mockList,
+          pageNum: 1,
+          total: mockList.length,
+          hasMore: false,
+          noMore: true,
+          loadingMore: false
+        })
+        return
+      }
+
+      const hasMore = pageNum < pages && hotGoods.length < total && formatted.length >= pageSize
+      const noMore = !hasMore
+
+      this.setData({
+        hotGoods,
+        pageNum,
+        total,
+        hasMore,
+        noMore,
+        loadingMore: false
+      })
+    }).catch(() => {
+      if (reset && (!this.data.hotGoods || this.data.hotGoods.length === 0)) {
+        const mockList = mock.getHotGoods(pageSize)
+        this.setData({
+          hotGoods: mockList,
+          pageNum: 1,
+          total: mockList.length,
+          hasMore: false,
+          noMore: true,
+          loadingMore: false
+        })
+      } else {
+        this.setData({
+          loadingMore: false
+        })
+      }
+    })
+  },
+
+  /**
+   * 上拉/触底加载更多热销商品
+   */
+  loadMoreHotGoods() {
+    if (this.data.loadingMore || !this.data.hasMore || this.data.noMore) {
+      return
+    }
+
+    const nextPage = (this.data.pageNum || 1) + 1
+    const pageSize = this.data.pageSize || 6
+
+    this.setData({ loadingMore: true })
+
+    return api.getHotsellingPage({
+      status: 1,
+      pageNum: nextPage,
+      pageSize
+    }).then((res) => {
+      const records = (res && Array.isArray(res.records))
+        ? res.records
+        : (Array.isArray(res) ? res : [])
+
+      const formatted = records.map((item) => ({
+        ...item,
+        image: formatImageUrl(item.image)
+      }))
+
+      const hotGoods = (this.data.hotGoods || []).concat(formatted)
+      const total = (res && typeof res.total === 'number') ? res.total : hotGoods.length
+      const pages = (res && typeof res.pages === 'number') ? res.pages : Math.ceil(total / pageSize)
+
+      const hasMore = nextPage < pages && hotGoods.length < total && formatted.length >= pageSize
+      const noMore = !hasMore
+
+      this.setData({
+        hotGoods,
+        pageNum: nextPage,
+        total,
+        hasMore,
+        noMore,
+        loadingMore: false
+      })
+    }).catch(() => {
+      this.setData({ loadingMore: false })
+      wx.showToast({ title: '加载失败，请重试', icon: 'none' })
+    })
+  },
+
+  /**
+   * 页面触底（向上拉刷新加载更多）
+   */
+  onReachBottom() {
+    this.loadMoreHotGoods()
   },
 
   onShow() {
@@ -97,6 +363,20 @@ Page(Object.assign({}, modalMixin, {
         const page = pages[pages.length - 1]
         if (page && page.route === 'pages/category/category') {
           page.prepareSearch()
+        }
+      }
+    })
+  },
+
+  /** 点击热销商品「查看更多」：跳转分类页并定位到「热销商品」页签 */
+  goHotCategory() {
+    wx.switchTab({
+      url: '/pages/category/category',
+      success: () => {
+        const pages = getCurrentPages()
+        const page = pages[pages.length - 1]
+        if (page && page.route === 'pages/category/category' && typeof page.selectCategory === 'function') {
+          page.selectCategory({ id: 'hot', name: '热销商品' })
         }
       }
     })

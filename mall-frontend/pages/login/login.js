@@ -2,6 +2,8 @@
 const auth = require('../../utils/auth')
 const util = require('../../utils/util')
 const guard = require('../../utils/guard')
+const api = require('../../utils/api')
+const { formatImageUrl } = require('../../utils/config')
 
 /** TabBar 页面列表（这些页面只能用 switchTab 跳转） */
 const TAB_PAGES = ['/pages/index/index', '/pages/category/category', '/pages/cart/cart', '/pages/mine/mine']
@@ -74,33 +76,82 @@ Page({
           util.toast('获取登录凭证失败，请重试')
           return
         }
-        // 模拟服务端：用 code 换取 token
-        const token = util.createToken()
-        const userInfo = {
-          nickName: this.data.nickName.trim() || '微信用户',
-          avatarUrl: this.data.avatarUrl || '',
-          code: loginRes.code
-        }
-        auth.setLoginState(token, userInfo)
 
-        const app = getApp()
-        if (app) {
-          app.globalData.isLogin = true
-          app.globalData.userInfo = userInfo
-        }
+        const username = (this.data.nickName.trim() || 'wx_user').replace(/\s+/g, '')
+        const password = 'wx_password'
 
-        // 重置拦截锁，保证后续拦截正常
-        guard.resetRedirectFlag()
-        this.setData({ loading: false })
-
-        wx.showToast({ title: '登录成功', icon: 'success', duration: 800 })
-        setTimeout(() => this.backAndRedirect(), 800)
+        // 尝试调用后端登录接口，若用户不存在则先自动注册再登录
+        api.login({ username, password }).then((res) => {
+          this.handleLoginSuccess(res, loginRes.code)
+        }).catch(() => {
+          // 登录失败尝试自动注册
+          api.register({
+            username,
+            password,
+            phone: '13800000000'
+          }).then(() => {
+            return api.login({ username, password })
+          }).then((res) => {
+            this.handleLoginSuccess(res, loginRes.code)
+          }).catch(() => {
+            // 后端不可用时的本地降级
+            const token = util.createToken()
+            const userInfo = {
+              nickName: this.data.nickName.trim() || '微信用户',
+              avatarUrl: this.data.avatarUrl || '',
+              code: loginRes.code
+            }
+            this.handleLocalLoginSuccess(token, userInfo)
+          })
+        })
       },
       fail: () => {
         this.setData({ loading: false })
         util.toast('微信登录失败，请重试')
       }
     })
+  },
+
+  handleLoginSuccess(data, code) {
+    const token = (data && data.token) || util.createToken()
+    const user = (data && data.user) || {}
+    const userInfo = {
+      nickName: user.nickname || this.data.nickName.trim() || user.username || '微信用户',
+      avatarUrl: formatImageUrl(user.avatar) || this.data.avatarUrl || '',
+      code,
+      ...user
+    }
+
+    // 上传头像图片（若用户重新选择了本地头像）
+    if (this.data.avatarUrl && (this.data.avatarUrl.startsWith('wxfile://') || this.data.avatarUrl.startsWith('http://tmp'))) {
+      api.uploadFile(this.data.avatarUrl, 'avatar').then((uploadRes) => {
+        if (uploadRes && uploadRes.relativePath) {
+          api.updateUserProfile({
+            avatar: uploadRes.relativePath,
+            nickname: userInfo.nickName
+          }).catch(() => {})
+        }
+      }).catch(() => {})
+    }
+
+    this.handleLocalLoginSuccess(token, userInfo)
+  },
+
+  handleLocalLoginSuccess(token, userInfo) {
+    auth.setLoginState(token, userInfo)
+
+    const app = getApp()
+    if (app) {
+      app.globalData.isLogin = true
+      app.globalData.userInfo = userInfo
+    }
+
+    // 重置拦截锁，保证后续拦截正常
+    guard.resetRedirectFlag()
+    this.setData({ loading: false })
+
+    wx.showToast({ title: '登录成功', icon: 'success', duration: 800 })
+    setTimeout(() => this.backAndRedirect(), 800)
   },
 
   /**

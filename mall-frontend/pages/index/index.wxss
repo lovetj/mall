@@ -29,6 +29,8 @@
   padding: 20rpx 24rpx 0;
 }
 
+/* 轮播图上方紧邻分类时，去掉多余间距由 cate-wrap 控制 */
+
 .banner-swiper {
   height: 320rpx;
   border-radius: 16rpx;
@@ -39,6 +41,14 @@
   width: 100%;
   height: 100%;
   position: relative;
+  overflow: hidden;
+  transition: transform 0.18s ease, filter 0.18s ease;
+}
+
+/* 按下时：轻微缩小 + 变暗，松开后回弹 */
+.banner-item.is-pressed {
+  transform: scale(0.96);
+  filter: brightness(0.85);
 }
 
 .banner-item image {
@@ -46,6 +56,31 @@
   height: 100%;
   display: block;
   background: #e9ecef;
+}
+
+/* 可跳转提示：右上角小标签，带呼吸动画 */
+.banner-link-tip {
+  position: absolute;
+  right: 24rpx;
+  top: 24rpx;
+  padding: 6rpx 18rpx;
+  background: rgba(255, 80, 0, 0.9);
+  color: #fff;
+  font-size: 22rpx;
+  border-radius: 24rpx;
+  animation: banner-tip-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes banner-tip-pulse {
+  0%,
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  50% {
+    transform: translateX(6rpx);
+    opacity: 0.75;
+  }
 }
 
 .banner-title {
@@ -60,12 +95,129 @@
   max-width: 80%;
 }
 
-/* 热销商品网格 */
+/* 商品分类：每行最多 4 个，超出换行 */
+.cate-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 24rpx 16rpx 8rpx;
+  background: #fff;
+  margin: 0 24rpx;
+  border-radius: 16rpx;
+}
+
+.cate-item {
+  width: 25%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12rpx 0 20rpx;
+}
+
+.cate-icon {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  background: #f5f6f8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  overflow: hidden;
+  transition: transform 0.18s ease;
+}
+
+.cate-item:active .cate-icon {
+  transform: scale(0.9);
+}
+
+.cate-icon image {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.cate-name {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #333;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 热销商品区域：整体包裹 + 自上而下的浅粉色渐变 */
+.hot-section {
+  margin: 20rpx 24rpx 0;
+  border-radius: 16rpx;
+  background: linear-gradient(180deg, #fff7f4 0%, #fffbfa 45%, #ffffff 100%);
+}
+
+/* 热销商品副标题 */
+.section-subtitle {
+  padding: 0 24rpx;
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #999;
+  letter-spacing: 2rpx;
+}
+
 .hot-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 20rpx;
-  padding: 12rpx 24rpx 0;
+  display: flex;
+  flex-wrap: wrap;
+  padding: 12rpx 14rpx 0;
+  box-sizing: border-box;
+}
+
+.hot-grid .hot-item {
+  display: block;
+  width: calc(50% - 20rpx);
+  flex: 0 0 calc(50% - 20rpx);
+  max-width: calc(50% - 20rpx);
+  margin: 0 10rpx 20rpx;
+  box-sizing: border-box;
+}
+
+/* 底部加载更多与到底了 */
+.loading-more-bar,
+.no-more-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 24rpx 28rpx;
+  box-sizing: border-box;
+}
+
+.loading-spin {
+  width: 28rpx;
+  height: 28rpx;
+  margin-right: 12rpx;
+  border: 3rpx solid #e0e0e0;
+  border-top-color: #ff5000;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 24rpx;
+  color: #999999;
+}
+
+.no-more-line {
+  width: 80rpx;
+  height: 1rpx;
+  background-color: #e6e6e6;
+}
+
+.no-more-text {
+  margin: 0 16rpx;
+  font-size: 24rpx;
+  color: #999999;
 }
 
 /* 搜索结果列表 */

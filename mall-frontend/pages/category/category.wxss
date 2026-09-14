@@ -44,8 +44,8 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: center;
-  padding: 32rpx 12rpx;
+  justify-content: flex-start;
+  padding: 32rpx 12rpx 32rpx 24rpx;
   font-size: 26rpx;
   color: #666;
   position: relative;
@@ -55,6 +55,15 @@
   font-size: 28rpx;
   margin-right: 6rpx;
   flex-shrink: 0;
+}
+
+.side-item .side-icon-img {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 8rpx;
+  margin-right: 6rpx;
+  flex-shrink: 0;
+  background: #fff;
 }
 
 .side-item .side-name {
@@ -88,7 +97,6 @@
   flex: 1;
   height: 100%;
   background: #fff;
-  padding: 0 20rpx;
 }
 
 .area-title {
@@ -100,4 +108,115 @@
 
 .goods-list {
   padding-bottom: 40rpx;
+}
+
+/* 列表商品：原生视图渲染，完全控制宽度和省略号 */
+.list-goods {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  background: #fff;
+  border-radius: 16rpx;
+  overflow: hidden;
+  padding: 20rpx;
+  margin-bottom: 20rpx;
+  width: 80%;
+  max-width: 80%;
+  box-sizing: border-box;
+}
+
+.list-goods-img {
+  width: 200rpx;
+  height: 200rpx;
+  border-radius: 12rpx;
+  flex-shrink: 0;
+  background: #f5f6f8;
+}
+
+.list-goods-info {
+  flex: 1;
+  min-width: 0;
+  padding-left: 20rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+}
+
+.list-goods-name {
+  font-size: 26rpx;
+  line-height: 36rpx;
+  color: #222;
+  /* 最多两行省略 */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.list-goods-desc {
+  font-size: 22rpx;
+  line-height: 30rpx;
+  color: #999;
+  margin-top: 8rpx;
+  /* 单行省略 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.list-goods-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 12rpx;
+}
+
+/* 底部加载更多与到底了（与首页保持一致） */
+.loading-more-bar,
+.no-more-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 24rpx 28rpx;
+  box-sizing: border-box;
+}
+
+.no-more-bar {
+  width: 80%;
+  max-width: 80%;
+}
+
+.loading-spin {
+  width: 28rpx;
+  height: 28rpx;
+  margin-right: 12rpx;
+  border: 3rpx solid #e0e0e0;
+  border-top-color: #ff5000;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 24rpx;
+  color: #999999;
+}
+
+.no-more-line {
+  width: 80rpx;
+  height: 1rpx;
+  background-color: #e6e6e6;
+}
+
+.no-more-text {
+  margin: 0 16rpx;
+  font-size: 24rpx;
+  color: #999999;
 }

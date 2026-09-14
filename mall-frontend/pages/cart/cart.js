@@ -6,6 +6,7 @@ const util = require('../../utils/util')
 const auth = require('../../utils/auth')
 const modalMixin = require('../../utils/modal-mixin')
 const { KEYS } = require('../../utils/keys')
+const api = require('../../utils/api')
 
 Page(Object.assign({}, modalMixin, {
   data: {
@@ -31,7 +32,12 @@ Page(Object.assign({}, modalMixin, {
       })
       return
     }
-    this.refreshCart()
+    // 同步远端购物车
+    cart.syncFromRemote().then(() => {
+      this.refreshCart()
+    }).catch(() => {
+      this.refreshCart()
+    })
   },
 
   /** 同步自定义 TabBar 的选中态与购物车角标 */
@@ -150,18 +156,44 @@ Page(Object.assign({}, modalMixin, {
       })
       return
     }
-    const orderInfo = order.createOrder(checked, 'unpaid')
-    cart.removeChecked()
-    this.refreshCart()
-    wx.showModal({
-      title: '下单成功',
-      content: `订单号：${orderInfo.id}\n实付：¥${util.formatPrice(orderInfo.totalPrice)}`,
-      showCancel: false,
-      confirmText: '查看订单',
-      confirmColor: '#ff5000',
-      success: () => {
-        wx.navigateTo({ url: '/pages/orders/orders?status=unpaid' })
-      }
+
+    // 尝试调用后端创建订单接口
+    const defaultAddress = wx.getStorageSync(KEYS.ADDRESS)
+    const cartItemIds = checked.map((item) => item.id).filter(Boolean)
+    const checkoutData = {
+      cartItemIds,
+      addressId: (defaultAddress && defaultAddress.id) || null,
+      remark: '小程序下单'
+    }
+
+    api.checkoutOrder(checkoutData).then((orderVO) => {
+      cart.removeChecked()
+      this.refreshCart()
+      wx.showModal({
+        title: '下单成功',
+        content: `订单号：${orderVO.orderNo || orderVO.id}\n实付：¥${util.formatPrice(orderVO.totalAmount || this.data.totalPrice)}`,
+        showCancel: false,
+        confirmText: '查看订单',
+        confirmColor: '#ff5000',
+        success: () => {
+          wx.navigateTo({ url: '/pages/orders/orders?status=unpaid' })
+        }
+      })
+    }).catch(() => {
+      // 降级使用本地订单管理
+      const orderInfo = order.createOrder(checked, 'unpaid')
+      cart.removeChecked()
+      this.refreshCart()
+      wx.showModal({
+        title: '下单成功',
+        content: `订单号：${orderInfo.id}\n实付：¥${util.formatPrice(orderInfo.totalPrice)}`,
+        showCancel: false,
+        confirmText: '查看订单',
+        confirmColor: '#ff5000',
+        success: () => {
+          wx.navigateTo({ url: '/pages/orders/orders?status=unpaid' })
+        }
+      })
     })
   },
 

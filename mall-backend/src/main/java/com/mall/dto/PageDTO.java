@@ -9,4 +9,5 @@ public class PageDTO {
     private String keyword;
     private Long categoryId;
     private Integer status;
+    private Integer isHotselling;
 }
