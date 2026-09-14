@@ -1,0 +1,485 @@
+package com.mall.service.impl;
+
+import com.alibaba.fastjson2.JSON;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.mall.service.PaymentService;
+import com.mall.config.PayConfig;
+import com.mall.dto.PayRequestDTO;
+import com.mall.dto.PayResponseDTO;
+import com.mall.entity.Order;
+import com.mall.entity.Payment;
+import com.mall.mapper.OrderMapper;
+import com.mall.mapper.PaymentMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
+import java.util.UUID;
+
+/**
+ * 支付服务实现
+ *
+ * 两种模式:
+ *   1. Mock 模式 (pay.mock.enabled=true) - 默认, 不依赖真实商户号
+ *      - 拉起支付只创建支付流水, 不调微信
+ *      - 前端可以点"模拟支付成功", 把流水和订单状态流转
+ *
+ *   2. 真实微信支付模式 (pay.mock.enabled=false)
+ *      - 根据 pay.wechat.trade-type 和 platform 参数选通道
+ *      - 微信支付 V3 API (REST + RSA 签名)
+ *      - 回调接口 handleWechatNotify 处理异步通知
+ *
+ * 真实微信支付V3接入步骤(上线前):
+ *   a) 商户平台设置 APIv3Key(32位) + 下载证书
+ *   b) 填 application.yml pay.wechat 所有字段
+ *   c) 把 mock.enabled 改成 false
+ *   d) 把 handleWechatNotify 里的验签逻辑替换为真正的微信签名验证
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class PaymentServiceImpl implements PaymentService {
+
+    private final PaymentMapper paymentMapper;
+    private final OrderMapper orderMapper;
+    private final PayConfig payConfig;
+
+    /** 订单状态常量 */
+    private static final int ORDER_STATUS_PENDING_PAY = 0;    // 待付款
+    private static final int ORDER_STATUS_PENDING_SHIP = 1;  // 待发货(已支付)
+
+    /** 支付状态常量 */
+    private static final int PAY_STATUS_PENDING = 0;   // 待支付
+    private static final int PAY_STATUS_SUCCESS = 1;   // 支付成功
+    private static final int PAY_STATUS_FAIL = 2;      // 支付失败
+
+    /** 支付方式常量 */
+    private static final int PAY_TYPE_WECHAT = 1;
+    private static final int PAY_TYPE_ALIPAY = 2;
+    private static final int PAY_TYPE_COD = 3;         // 货到付款
+    private static final int PAY_TYPE_MOCK = 99;
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public PayResponseDTO createPayment(PayRequestDTO request, Long userId, String clientIp) {
+        PayResponseDTO resp = new PayResponseDTO();
+
+        // 1. 校验订单
+        Order order = orderMapper.selectById(request.getOrderId());
+        if (order == null) {
+            resp.setSuccess(false);
+            resp.setMessage("订单不存在");
+            return resp;
+        }
+        if (!order.getUserId().equals(userId)) {
+            resp.setSuccess(false);
+            resp.setMessage("无权操作该订单");
+            return resp;
+        }
+        if (order.getStatus() != ORDER_STATUS_PENDING_PAY) {
+            resp.setSuccess(false);
+            resp.setMessage("订单当前状态不可支付");
+            return resp;
+        }
+
+        // 2. 生成支付流水号
+        String paymentNo = generatePaymentNo();
+
+        // 3. 查是否已有进行中的支付流水(同一订单待支付状态, 避免重复下单)
+        Payment exist = paymentMapper.selectOne(
+                new LambdaQueryWrapper<Payment>()
+                        .eq(Payment::getOrderId, order.getId())
+                        .eq(Payment::getPayStatus, PAY_STATUS_PENDING)
+                        .last("LIMIT 1"));
+
+        if (exist != null) {
+            // 已有待支付流水, 直接复用
+            log.info("[支付] 复用已有待支付流水 paymentNo={}", exist.getPaymentNo());
+            return buildPayResponse(exist);
+        }
+
+        // 4. 创建新支付流水
+        Payment payment = new Payment();
+        payment.setPaymentNo(paymentNo);
+        payment.setOrderId(order.getId());
+        payment.setOrderNo(order.getOrderNo());
+        payment.setUserId(userId);
+        payment.setPayAmount(order.getPayAmount());
+        payment.setPayType(request.getPayType());
+        payment.setPayStatus(PAY_STATUS_PENDING);
+        payment.setRequestParam(JSON.toJSONString(request));
+        payment.setClientIp(clientIp);
+        // 支付有效期: 30分钟
+        payment.setExpireTime(LocalDateTime.now().plusMinutes(30));
+
+        // 记录 pay_type 到订单(先留着, 支付成功回调里再更新 pay_time)
+        order.setPayType(request.getPayType());
+        orderMapper.updateById(order);
+
+        boolean isMock = payConfig.getMock().isEnabled();
+        boolean isCod = PAY_TYPE_COD == request.getPayType();
+        Map<String, Object> payParams;
+
+        if (isCod) {
+            // 货到付款: 直接标记为"支付成功"(线下付款), 订单进入待发货
+            payment.setPayStatus(PAY_STATUS_SUCCESS);
+            payment.setPayTime(LocalDateTime.now());
+            payment.setTransactionId("COD-" + UUID.randomUUID().toString().replace("-", "").substring(0, 16));
+            payment.setFailReason(null);
+            payParams = buildCashOnDeliveryParams();
+            // 同步更新订单状态
+            order.setStatus(ORDER_STATUS_PENDING_SHIP);
+            order.setPayTime(LocalDateTime.now());
+            orderMapper.updateById(order);
+            log.info("[支付] 货到付款 订单={} 直接标记为支付成功", order.getOrderNo());
+        } else if (isMock) {
+            // Mock 模式: 不调真实微信, 前端可以点"模拟支付成功"
+            payParams = buildMockParams();
+            log.info("[支付] Mock模式 拉起支付 paymentNo={} orderNo={} amount={}",
+                    paymentNo, order.getOrderNo(), order.getPayAmount());
+        } else {
+            // 真实支付: 根据 payType + platform 调微信
+            try {
+                payParams = callWechatPayApi(payment, request);
+                log.info("[支付] 真实微信支付 流水={} 通道={}", paymentNo, request.getPlatform());
+            } catch (Exception e) {
+                log.error("[支付] 调用微信支付接口失败", e);
+                payment.setPayStatus(PAY_STATUS_FAIL);
+                payment.setFailReason("微信接口调用失败: " + e.getMessage());
+                paymentMapper.insert(payment);
+                resp.setSuccess(false);
+                resp.setMessage("支付发起失败, 请稍后重试");
+                return resp;
+            }
+        }
+
+        if (PAY_STATUS_SUCCESS != payment.getPayStatus()) {
+            paymentMapper.insert(payment);
+        } else {
+            paymentMapper.insert(payment);
+        }
+
+        resp.setSuccess(true);
+        resp.setPaymentNo(paymentNo);
+        resp.setOrderNo(order.getOrderNo());
+        resp.setPayAmount(order.getPayAmount());
+        resp.setPayType(request.getPayType());
+        resp.setPayParams(payParams);
+        return resp;
+    }
+
+    @Override
+    public boolean handleWechatNotify(String notifyBody, String signature, String timestamp, String nonce) {
+        // TODO: 真实模式需要实现完整验签 + 解密报文 + 处理业务
+        // 1. 用 APIv3Key + 证书序列号找到对应的证书公钥, 验签(signature 基于 SHA256-RSA2048)
+        // 2. 用 APIv3Key 对 resource.ciphertext 做 AES-256-GCM 解密, 得到 out_trade_no / transaction_id / trade_state
+        // 3. 根据 out_trade_no 找 Payment, 判断支付状态:
+        //    SUCCESS    → 更新 payment.payStatus=1, order.status=1, order.payTime=now
+        //    REFUND     → 更新为已退款
+        //    PAYERROR   → 更新为失败
+        // 4. 返回给微信 {"code":"SUCCESS","message":""} 防止微信重试
+        // 完整实现请参考微信支付官方文档 pay.weixin.qq.com/docs/merchant/apis/native-payment/notify-payment-result.html
+
+        // --- 以下是 Mock 占位逻辑, 真实环境请替换 ---
+        log.info("[微信回调] 收到通知 body={}", notifyBody);
+        return true;
+    }
+
+    @Override
+    public PayResponseDTO queryPaymentStatus(String paymentNo, Long userId) {
+        PayResponseDTO resp = new PayResponseDTO();
+        Payment payment = paymentMapper.selectOne(
+                new LambdaQueryWrapper<Payment>()
+                        .eq(Payment::getPaymentNo, paymentNo)
+                        .eq(Payment::getUserId, userId));
+        if (payment == null) {
+            resp.setSuccess(false);
+            resp.setMessage("支付流水不存在");
+            return resp;
+        }
+
+        resp.setPaymentNo(paymentNo);
+        resp.setOrderNo(payment.getOrderNo());
+        resp.setPayAmount(payment.getPayAmount());
+        resp.setPayType(payment.getPayType());
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("payStatus", payment.getPayStatus());
+        params.put("paid", PAY_STATUS_SUCCESS == payment.getPayStatus());
+        resp.setPayParams(params);
+        resp.setSuccess(true);
+        return resp;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public PayResponseDTO mockPaySuccess(String paymentNo, Long userId) {
+        PayResponseDTO resp = new PayResponseDTO();
+        if (!payConfig.getMock().isEnabled()) {
+            resp.setSuccess(false);
+            resp.setMessage("当前不是 Mock 模式");
+            return resp;
+        }
+
+        Payment payment = paymentMapper.selectOne(
+                new LambdaQueryWrapper<Payment>()
+                        .eq(Payment::getPaymentNo, paymentNo)
+                        .eq(Payment::getUserId, userId));
+        if (payment == null) {
+            resp.setSuccess(false);
+            resp.setMessage("支付流水不存在");
+            return resp;
+        }
+        if (PAY_STATUS_PENDING != payment.getPayStatus()) {
+            resp.setSuccess(false);
+            resp.setMessage("该流水已处理过");
+            return resp;
+        }
+
+        // 模拟成功率
+        Random rand = new Random();
+        int successRate = payConfig.getMock().getSuccessRate();
+        boolean success = rand.nextInt(100) < successRate;
+
+        if (success) {
+            payment.setPayStatus(PAY_STATUS_SUCCESS);
+            payment.setPayTime(LocalDateTime.now());
+            payment.setTransactionId("MOCK-" + UUID.randomUUID().toString().replace("-", "").substring(0, 16));
+            payment.setFailReason(null);
+            paymentMapper.updateById(payment);
+
+            // 更新订单
+            Order order = orderMapper.selectById(payment.getOrderId());
+            if (order != null && ORDER_STATUS_PENDING_PAY == order.getStatus()) {
+                order.setStatus(ORDER_STATUS_PENDING_SHIP);
+                order.setPayTime(LocalDateTime.now());
+                orderMapper.updateById(order);
+            }
+            log.info("[Mock支付] 成功 paymentNo={} order={}", paymentNo, payment.getOrderNo());
+        } else {
+            payment.setPayStatus(PAY_STATUS_FAIL);
+            payment.setFailReason("模拟支付失败");
+            paymentMapper.updateById(payment);
+            log.warn("[Mock支付] 模拟失败 paymentNo={}", paymentNo);
+        }
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("payStatus", payment.getPayStatus());
+        params.put("paid", PAY_STATUS_SUCCESS == payment.getPayStatus());
+        resp.setSuccess(true);
+        resp.setPaymentNo(paymentNo);
+        resp.setOrderNo(payment.getOrderNo());
+        resp.setPayAmount(payment.getPayAmount());
+        resp.setPayType(payment.getPayType());
+        resp.setPayParams(params);
+        return resp;
+    }
+
+    // ==================== 内部工具方法 ====================
+
+    private PayResponseDTO buildPayResponse(Payment payment) {
+        PayResponseDTO resp = new PayResponseDTO();
+        resp.setSuccess(true);
+        resp.setPaymentNo(payment.getPaymentNo());
+        resp.setOrderNo(payment.getOrderNo());
+        resp.setPayAmount(payment.getPayAmount());
+        resp.setPayType(payment.getPayType());
+        resp.setPayParams(buildMockParams()); // Mock 模式下复用
+        return resp;
+    }
+
+    /** Mock 模式的 payParams: 前端展示模拟拉起支付, 然后让用户手动点"已付款" */
+    private Map<String, Object> buildMockParams() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("mock", true);
+        map.put("tips", "模拟支付中... 请点击下方「模拟支付成功」按钮确认");
+        return map;
+    }
+
+    /** 货到付款参数: 不需要拉起任何支付 */
+    private Map<String, Object> buildCashOnDeliveryParams() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("cod", true);
+        map.put("tips", "已选择货到付款, 收货时现金/扫码支付给快递员即可");
+        return map;
+    }
+
+    /**
+     * 真实微信支付 V3 下单
+     * 根据 tradeType + platform 选通道, 调微信 REST API
+     *
+     * 微信支付V3接口文档: pay.weixin.qq.com/docs/merchant/products/jsapi-payment/development/
+     * 微信支付API基础: HTTPS POST /v3/pay/transactions/{trade_type}
+     *
+     * @return 前端拉起支付需要的参数
+     */
+    private Map<String, Object> callWechatPayApi(Payment payment, PayRequestDTO request) throws Exception {
+        PayConfig.Wechat wx = payConfig.getWechat();
+        if (wx.getMchId() == null || wx.getMchId().isEmpty()) {
+            throw new IllegalStateException("微信支付商户号未配置");
+        }
+
+        BigDecimal amountFen = payment.getPayAmount().multiply(new BigDecimal(100)); // 单位分
+
+        // 根据 platform 或 tradeType 选交易类型
+        String tradeType = wx.getTradeType();
+        if (request.getPlatform() != null) {
+            switch (request.getPlatform()) {
+                case "mp":    // 微信小程序
+                case "h5wx":  // 微信内H5
+                    tradeType = "JSAPI";
+                    break;
+                case "app":
+                    tradeType = "APP";
+                    break;
+                case "h5":
+                    tradeType = "H5";
+                    break;
+                case "pc":
+                    tradeType = "NATIVE";
+                    break;
+            }
+        }
+
+        // === 1. 组装请求体 ===
+        Map<String, Object> body = new HashMap<>();
+        body.put("appid", wx.getAppId());
+        body.put("mchid", wx.getMchId());
+        body.put("description", "阳光农场-订单:" + payment.getOrderNo());
+        body.put("out_trade_no", payment.getPaymentNo());
+        body.put("notify_url", wx.getNotifyUrl());
+        Map<String, Object> amount = new HashMap<>();
+        amount.put("total", amountFen.intValue());
+        amount.put("currency", "CNY");
+        body.put("amount", amount);
+
+        // 各交易类型特有字段
+        switch (tradeType) {
+            case "JSAPI":
+                if (request.getOpenid() == null) throw new IllegalStateException("JSAPI支付需要 openid");
+                Map<String, Object> payer = new HashMap<>();
+                payer.put("openid", request.getOpenid());
+                body.put("payer", payer);
+                break;
+            case "H5":
+                Map<String, Object> sceneInfo = new HashMap<>();
+                sceneInfo.put("payer_client_ip", payment.getClientIp() != null ? payment.getClientIp() : "127.0.0.1");
+                body.put("scene_info", sceneInfo);
+                Map<String, Object> h5Info = new HashMap<>();
+                h5Info.put("type", "Wap");
+                body.put("h5_info", h5Info);
+                break;
+            case "NATIVE":
+                // 无额外字段
+                break;
+            case "APP":
+                // 无额外字段
+                break;
+        }
+
+        String reqBodyJson = JSON.toJSONString(body);
+        log.info("[微信下单] tradeType={} body={}", tradeType, reqBodyJson);
+
+        // === 2. 生成 Authorization 头 ===
+        // 微信V3鉴权: Authorization: WECHATPAY2-SHA256-RSA2048 mchid="xxx",nonce_str="xxx",timestamp="xxx",serial_no="xxx",signature="xxx"
+        String nonceStr = UUID.randomUUID().toString().replace("-", "");
+        String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
+        String message = "POST\n/v3/pay/transactions/" + tradeType.toLowerCase() + "\n" + timestamp + "\n" + nonceStr + "\n" + reqBodyJson + "\n";
+        String signature = signWithRSA(message);
+        String authorization = "WECHATPAY2-SHA256-RSA2048 " +
+                "mchid=\"" + wx.getMchId() + "\"," +
+                "nonce_str=\"" + nonceStr + "\"," +
+                "timestamp=\"" + timestamp + "\"," +
+                "serial_no=\"" + wx.getCertSerialNo() + "\"," +
+                "signature=\"" + signature + "\"";
+
+        // === 3. 发请求 ===
+        // 用 hutool HttpRequest 调微信 REST API
+        String url = "https://api.mch.weixin.qq.com/v3/pay/transactions/" + tradeType.toLowerCase();
+        String respBody = cn.hutool.http.HttpRequest.post(url)
+                .header("Authorization", authorization)
+                .header("Content-Type", "application/json")
+                .body(reqBodyJson)
+                .timeout(10000)
+                .execute()
+                .body();
+
+        log.info("[微信下单] 响应={}", respBody);
+
+        Map<String, Object> wxResp = JSON.parseObject(respBody);
+        if (wxResp.get("code") != null) {
+            throw new RuntimeException("微信返回错误: " + wxResp.get("code") + " - " + wxResp.get("message"));
+        }
+
+        // === 4. 按交易类型提取前端参数 ===
+        Map<String, Object> payParams = new HashMap<>();
+        switch (tradeType) {
+            case "APP":
+                // APP支付: 前端需要 appid/partnerid/prepayid/package/noncestr/timestamp/sign
+                payParams.put("appid", wxResp.get("appid"));
+                payParams.put("partnerid", wxResp.get("partnerid"));
+                payParams.put("prepayid", wxResp.get("prepay_id"));
+                payParams.put("package", "Sign=WXPay");
+                payParams.put("noncestr", UUID.randomUUID().toString().replace("-", ""));
+                payParams.put("timestamp", String.valueOf(System.currentTimeMillis() / 1000));
+                payParams.put("signType", "RSA");
+                payment.setPrepayId((String) wxResp.get("prepay_id"));
+                break;
+
+            case "JSAPI":
+                // JSAPI支付: 微信返回 prepay_id, 前端调 wx.requestPayment 需要签名参数
+                payParams.put("appId", wx.getAppId());
+                payParams.put("timeStamp", String.valueOf(System.currentTimeMillis() / 1000));
+                payParams.put("nonceStr", UUID.randomUUID().toString().replace("-", ""));
+                payParams.put("package", "prepay_id=" + wxResp.get("prepay_id"));
+                payParams.put("signType", "RSA");
+                payParams.put("paySign", "...需要用商户私钥对参数签名, 代码略...");
+                payment.setPrepayId((String) wxResp.get("prepay_id"));
+                break;
+
+            case "H5":
+                // H5支付: 返回 mweb_url, 前端直接跳转
+                payParams.put("mweb_url", wxResp.get("mweb_url"));
+                payment.setMwebUrl((String) wxResp.get("mweb_url"));
+                break;
+
+            case "NATIVE":
+                // Native支付: 返回 code_url, 前端生成二维码
+                payParams.put("code_url", wxResp.get("code_url"));
+                payment.setQrCodeUrl((String) wxResp.get("code_url"));
+                break;
+        }
+
+        payment.setRequestParam(reqBodyJson);
+        return payParams;
+    }
+
+    /**
+     * RSA 私钥签名 (SHA256-RSA2048)
+     * 真实实现需要: 读取 pay.wechat.private-key-path 指向的 apiclient_key.pem
+     * 伪代码如下, 上线时请用 Java Security API 实现
+     */
+    private String signWithRSA(String message) throws Exception {
+        // TODO: 实现 RSA 签名
+        // 1. KeyFactory.getInstance("RSA")
+        // 2. PKCS8EncodedKeySpec 加载 private key bytes
+        // 3. Signature.getInstance("SHA256withRSA")
+        // 4. signature.initSign(privateKey); signature.update(message.getBytes("UTF-8"))
+        // 5. Base64.getEncoder().encodeToString(signature.sign())
+        throw new UnsupportedOperationException("RSA签名未实现 - 使用Mock模式可绕过, 真实微信支付需补全此方法");
+    }
+
+    /** 生成支付流水号: P + yyyyMMddHHmmss + 4位随机 */
+    private String generatePaymentNo() {
+        String ts = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        String rand = String.format("%04d", new Random().nextInt(10000));
+        return "P" + ts + rand;
+    }
+}

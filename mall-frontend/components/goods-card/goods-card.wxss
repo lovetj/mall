@@ -1,0 +1,73 @@
+.goods-card {
+  background: #fff;
+  border-radius: 16rpx;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-hover {
+  opacity: 0.85;
+}
+
+.goods-img {
+  width: 100%;
+  height: 340rpx;
+  background: #f5f6f8;
+}
+
+.goods-img image {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.goods-info {
+  padding: 16rpx;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.goods-name {
+  font-size: 26rpx;
+  line-height: 36rpx;
+  color: #222;
+  min-height: 72rpx;
+}
+
+.goods-sales {
+  font-size: 22rpx;
+  color: #999;
+  margin-top: 8rpx;
+}
+
+.goods-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12rpx;
+}
+
+/* ========== list 布局 ========== */
+.goods-card.is-list {
+  flex-direction: row;
+  padding: 20rpx;
+  margin-bottom: 20rpx;
+}
+
+.goods-card.is-list .goods-img {
+  width: 200rpx;
+  height: 200rpx;
+  border-radius: 12rpx;
+  flex-shrink: 0;
+}
+
+.goods-card.is-list .goods-info {
+  padding: 0 0 0 20rpx;
+  justify-content: space-between;
+}
+
+.goods-card.is-list .goods-name {
+  min-height: auto;
+}

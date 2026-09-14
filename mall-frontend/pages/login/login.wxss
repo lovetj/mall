@@ -1,0 +1,176 @@
+/*登录页样式*/
+.login-page {
+  min-height: 100vh;
+  background: #fff;
+  padding: 0 60rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.logo-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 100rpx 0 60rpx;
+}
+
+.logo {
+  font-size: 130rpx;
+  margin-bottom: 24rpx;
+}
+
+.app-name {
+  font-size: 44rpx;
+  font-weight: 600;
+  color: #222;
+  margin-bottom: 16rpx;
+}
+
+.app-slogan {
+  font-size: 26rpx;
+  color: #999;
+}
+
+.redirect-tip {
+  margin-top: 24rpx;
+  padding: 10rpx 28rpx;
+  font-size: 24rpx;
+  color: #ff5000;
+  background: #fff1eb;
+  border-radius: 28rpx;
+}
+
+.form-area {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 头像 */
+.avatar-btn {
+  background: transparent;
+  padding: 0;
+  margin: 0 auto 50rpx;
+  line-height: normal;
+  width: 180rpx;
+  height: 180rpx;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.avatar-btn::after {
+  border: none;
+}
+
+.avatar-preview {
+  width: 180rpx;
+  height: 180rpx;
+  border-radius: 50%;
+}
+
+.avatar-placeholder {
+  width: 180rpx;
+  height: 180rpx;
+  border-radius: 50%;
+  background: #f5f6f8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-icon {
+  font-size: 56rpx;
+  margin-bottom: 6rpx;
+}
+
+.avatar-tip {
+  font-size: 20rpx;
+  color: #999;
+}
+
+/* 输入行 */
+.input-row {
+  display: flex;
+  align-items: center;
+  height: 100rpx;
+  border-bottom: 1rpx solid #eee;
+  margin-bottom: 40rpx;
+}
+
+.input-label {
+  width: 120rpx;
+  font-size: 30rpx;
+  color: #222;
+}
+
+.input {
+  flex: 1;
+  height: 100rpx;
+  font-size: 30rpx;
+}
+
+.input-placeholder {
+  color: #ccc;
+}
+
+/* 协议 */
+.agree-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 50rpx;
+}
+
+.agree-check {
+  width: 34rpx;
+  height: 34rpx;
+  border-radius: 50%;
+  border: 2rpx solid #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 22rpx;
+  flex-shrink: 0;
+  margin-right: 12rpx;
+}
+
+.agree-check.checked {
+  background: #ff5000;
+  border-color: #ff5000;
+}
+
+.agree-text {
+  font-size: 24rpx;
+  color: #666;
+}
+
+/* 登录按钮 */
+.login-btn {
+  height: 92rpx;
+  line-height: 92rpx;
+  border-radius: 46rpx;
+  background: linear-gradient(90deg, #ff7a1a, #ff5000);
+  color: #fff;
+  font-size: 32rpx;
+  margin-bottom: 24rpx;
+}
+
+.login-btn::after {
+  border: none;
+}
+
+.cancel-btn {
+  text-align: center;
+  font-size: 26rpx;
+  color: #999;
+  padding: 20rpx 0;
+}
+
+.login-tip {
+  margin-top: auto;
+  padding: 60rpx 0 80rpx;
+  text-align: center;
+  font-size: 22rpx;
+  color: #bbb;
+  line-height: 34rpx;
+}

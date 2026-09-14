@@ -1,0 +1,103 @@
+/*分类页样式*/
+.category-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+  /* 自定义 TabBar 占位（与 custom-tab-bar 的 100rpx 对齐） */
+  padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
+}
+
+.header {
+  padding: 20rpx 24rpx;
+  background: linear-gradient(180deg, #ff5000, #ff7a1a);
+  flex-shrink: 0;
+}
+
+.header .search-bar {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.clear-icon {
+  color: #999;
+  font-size: 24rpx;
+  padding: 0 6rpx;
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+}
+
+/* 左侧类别 */
+.side-bar {
+  width: 190rpx;
+  height: 100%;
+  background: #f2f3f5;
+  flex-shrink: 0;
+}
+
+.side-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 32rpx 12rpx;
+  font-size: 26rpx;
+  color: #666;
+  position: relative;
+}
+
+.side-item .side-icon {
+  font-size: 28rpx;
+  margin-right: 6rpx;
+  flex-shrink: 0;
+}
+
+.side-item .side-name {
+  font-size: 24rpx;
+  line-height: 32rpx;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.side-item.active {
+  background: #fff;
+  color: #ff5000;
+  font-weight: 600;
+}
+
+.side-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8rpx;
+  height: 48rpx;
+  background: #ff5000;
+  border-radius: 0 8rpx 8rpx 0;
+}
+
+/* 右侧商品 */
+.goods-area {
+  flex: 1;
+  height: 100%;
+  background: #fff;
+  padding: 0 20rpx;
+}
+
+.area-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  padding: 24rpx 0 12rpx;
+  color: #222;
+}
+
+.goods-list {
+  padding-bottom: 40rpx;
+}

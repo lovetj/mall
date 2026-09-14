@@ -1,0 +1,61 @@
+/* 登录拦截弹窗：蒙版可自定义（半透明黑），不会与固定定位元素发生层级冲突 */
+.lm-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.lm-dialog {
+  width: 560rpx;
+  padding: 48rpx 40rpx 0;
+  background: #ffffff;
+  border-radius: 20rpx;
+  box-shadow: 0 8rpx 40rpx rgba(0, 0, 0, 0.12);
+  box-sizing: border-box;
+}
+
+.lm-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #222222;
+  text-align: center;
+}
+
+.lm-content {
+  margin-top: 24rpx;
+  font-size: 28rpx;
+  line-height: 42rpx;
+  color: #666666;
+  text-align: center;
+}
+
+.lm-actions {
+  display: flex;
+  margin-top: 40rpx;
+  border-top: 1rpx solid #eeeeee;
+}
+
+.lm-btn {
+  flex: 1;
+  height: 96rpx;
+  line-height: 96rpx;
+  text-align: center;
+  font-size: 30rpx;
+}
+
+.lm-btn-cancel {
+  color: #666666;
+  border-right: 1rpx solid #eeeeee;
+}
+
+.lm-btn-confirm {
+  color: #ff5000;
+  font-weight: 600;
+}

@@ -1,0 +1,52 @@
+<!--登录页-->
+<view class="login-page">
+  <!-- 顶部品牌区 -->
+  <view class="logo-area">
+    <view class="logo">🛍️</view>
+    <view class="app-name">优选商城</view>
+    <view class="app-slogan">登录后同步购物车与订单</view>
+    <view class="redirect-tip" wx:if="{{redirectName}}">登录后将返回「{{redirectName}}」</view>
+  </view>
+
+  <!-- 表单区 -->
+  <view class="form-area">
+    <!-- 头像选择 -->
+    <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+      <image wx:if="{{avatarUrl}}" class="avatar-preview" src="{{avatarUrl}}" mode="aspectFill"></image>
+      <view wx:else class="avatar-placeholder">
+        <text class="avatar-icon">👤</text>
+        <text class="avatar-tip">点击获取头像</text>
+      </view>
+    </button>
+
+    <!-- 昵称输入 -->
+    <view class="input-row">
+      <text class="input-label">昵称</text>
+      <input
+        class="input"
+        type="nickname"
+        value="{{nickName}}"
+        placeholder="点击获取微信昵称"
+        placeholder-class="input-placeholder"
+        bindinput="onNicknameInput"
+      />
+    </view>
+
+    <!-- 协议 -->
+    <view class="agree-row" bindtap="onToggleAgree">
+      <view class="agree-check {{agreed ? 'checked' : ''}}">
+        <text wx:if="{{agreed}}">✓</text>
+      </view>
+      <text class="agree-text">我已阅读并同意《用户协议》和《隐私政策》</text>
+    </view>
+
+    <!-- 登录按钮 -->
+    <button class="login-btn" bindtap="onLogin" loading="{{loading}}" disabled="{{loading}}">
+      {{loading ? '登录中...' : '微信授权登录'}}
+    </button>
+
+    <view class="cancel-btn" bindtap="onCancel">暂不登录，先逛逛</view>
+  </view>
+
+  <view class="login-tip">优选商城仅获取头像与昵称用于展示，不会泄露您的隐私</view>
+</view>

@@ -1,0 +1,56 @@
+<!--首页-->
+<view class="page-wrap">
+  <!-- 搜索框 -->
+  <view class="header">
+    <view class="header-title">优选商城</view>
+    <view class="search-bar" bindtap="goCategory">
+      <text class="search-icon">🔍</text>
+      <text class="search-placeholder-text">搜索商品</text>
+    </view>
+  </view>
+
+  <!-- 轮播图 -->
+  <view class="banner-wrap">
+    <swiper
+      class="banner-swiper"
+      indicator-dots
+      indicator-color="rgba(255,255,255,0.4)"
+      indicator-active-color="#ffffff"
+      autoplay
+      circular
+      interval="3000"
+      duration="400"
+    >
+      <swiper-item wx:for="{{banners}}" wx:key="id">
+        <view class="banner-item">
+          <image src="{{item.image}}" mode="aspectFill" lazy-load></image>
+          <view class="banner-title">{{item.title}}</view>
+        </view>
+      </swiper-item>
+    </swiper>
+  </view>
+
+  <!-- 热销商品 -->
+  <view class="section-title">
+    <text>🔥 热销商品</text>
+    <text class="more" bindtap="goCategory">查看更多 ›</text>
+  </view>
+  <view class="hot-grid">
+    <goods-card
+      wx:for="{{hotGoods}}"
+      wx:key="id"
+      goods="{{item}}"
+      layout="grid"
+      bind:addcart="onAddCart"
+      bind:goodstap="onGoodsTap"
+    />
+  </view>
+  <view class="tabbar-placeholder"></view>
+
+  <!-- 登录拦截弹窗（自绘，蒙版可自定义） -->
+  <login-modal
+    id="loginModal"
+    bind:confirm="onLoginModalConfirm"
+    bind:cancel="onLoginModalClose"
+  />
+</view>

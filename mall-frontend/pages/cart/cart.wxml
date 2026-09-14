@@ -1,0 +1,67 @@
+<!--购物车页（需登录）-->
+<view class="page-wrap cart-page">
+  <!-- 头部操作 -->
+  <view class="cart-header" wx:if="{{cartList.length > 0}}">
+    <text class="cart-count">共 {{cartList.length}} 件商品</text>
+    <text class="edit-btn" bindtap="onToggleEdit">{{editing ? '完成' : '管理'}}</text>
+  </view>
+
+  <!-- 空状态 -->
+  <view wx:if="{{cartList.length === 0}}" class="empty">
+    <text class="empty-icon">🛒</text>
+    <text>购物车还是空的</text>
+    <view class="btn-primary go-shop" bindtap="goShopping">去逛逛</view>
+  </view>
+
+  <!-- 商品列表 -->
+  <view wx:else class="cart-list">
+    <view class="cart-item" wx:for="{{cartList}}" wx:key="id">
+      <view class="checkbox {{item.checked ? 'checked' : ''}}" data-id="{{item.id}}" bindtap="onToggleCheck">
+        <text wx:if="{{item.checked}}">✓</text>
+      </view>
+      <image class="item-img" src="{{item.image}}" mode="aspectFill" lazy-load></image>
+      <view class="item-info">
+        <view class="item-name ellipsis-2">{{item.name}}</view>
+        <view class="item-bottom">
+          <view class="price">
+            <text class="price-symbol">¥</text>
+            <text class="price-value">{{item.price}}</text>
+          </view>
+          <view class="stepper">
+            <view class="step-btn" data-id="{{item.id}}" bindtap="onMinus">−</view>
+            <text class="step-num">{{item.count}}</text>
+            <view class="step-btn" data-id="{{item.id}}" bindtap="onPlus">+</view>
+          </view>
+        </view>
+      </view>
+      <view wx:if="{{editing}}" class="del-btn" data-id="{{item.id}}" bindtap="onDelete">删除</view>
+    </view>
+  </view>
+
+  <!-- 底部固定结算区 -->
+  <view class="footer" wx:if="{{cartList.length > 0}}">
+    <view class="footer-left">
+      <view class="checkbox {{allChecked ? 'checked' : ''}}" bindtap="onToggleAll">
+        <text wx:if="{{allChecked}}">✓</text>
+      </view>
+      <text class="all-text">全选</text>
+    </view>
+    <view class="footer-right">
+      <view class="total">
+        <text class="total-label">合计：</text>
+        <text class="price">
+          <text class="price-symbol">¥</text>
+          <text class="price-value">{{totalPrice}}</text>
+        </text>
+      </view>
+      <view class="checkout-btn" bindtap="onCheckout">去结算({{totalCount}})</view>
+    </view>
+  </view>
+
+  <!-- 登录拦截弹窗（自绘，蒙版可自定义） -->
+  <login-modal
+    id="loginModal"
+    bind:confirm="onLoginModalConfirm"
+    bind:cancel="onLoginModalClose"
+  />
+</view>

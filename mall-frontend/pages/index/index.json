@@ -1,0 +1,8 @@
+{
+  "usingComponents": {
+    "goods-card": "/components/goods-card/goods-card",
+    "login-modal": "/components/login-modal/login-modal"
+  },
+  "navigationBarTitleText": "优选商城",
+  "enablePullDownRefresh": false
+}

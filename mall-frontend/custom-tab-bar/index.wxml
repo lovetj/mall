@@ -1,0 +1,51 @@
+<!--自定义 TabBar：图标全部由 CSS 绘制，风格统一-->
+<view class="tab-bar">
+  <view
+    class="tab-item"
+    wx:for="{{list}}"
+    wx:key="pagePath"
+    data-index="{{index}}"
+    data-path="{{item.url}}"
+    bindtap="onTap"
+  >
+    <view class="tab-icon-wrap {{selected === index ? 'active' : ''}}">
+      <!-- 首页：屋顶 + 房体 -->
+      <view wx:if="{{item.iconType === 'home'}}" class="ico ico-home">
+        <view class="home-roof"></view>
+        <view class="home-body"></view>
+      </view>
+
+      <!-- 分类：四个方块 -->
+      <view wx:elif="{{item.iconType === 'grid'}}" class="ico ico-grid">
+        <view class="grid-cell"></view>
+        <view class="grid-cell"></view>
+        <view class="grid-cell"></view>
+        <view class="grid-cell"></view>
+      </view>
+
+      <!-- 购物车：篮身 + 提手 + 轮子 -->
+      <view wx:elif="{{item.iconType === 'cart'}}" class="ico ico-cart">
+        <view class="cart-handle"></view>
+        <view class="cart-body"></view>
+        <view class="cart-wheel"></view>
+        <view class="cart-wheel"></view>
+      </view>
+
+      <!-- 我的：头 + 肩 -->
+      <view wx:elif="{{item.iconType === 'user'}}" class="ico ico-user">
+        <view class="user-head"></view>
+        <view class="user-body"></view>
+      </view>
+
+      <!-- 购物车角标 -->
+      <view class="tab-badge" wx:if="{{item.iconType === 'cart' && cartCount > 0}}">
+        {{cartCount > 99 ? '99+' : cartCount}}
+      </view>
+    </view>
+
+    <text
+      class="tab-text {{selected === index ? 'active' : ''}}"
+      style="color: {{selected === index ? selectedColor : color}}"
+    >{{item.text}}</text>
+  </view>
+</view>

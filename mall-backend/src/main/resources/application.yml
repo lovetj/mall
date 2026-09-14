@@ -1,0 +1,84 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 5MB
+      max-request-size: 50MB
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/mall?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: root
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 30000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+
+  redis:
+    host: localhost
+    port: 6379
+    password:
+    database: 0
+    timeout: 10000
+
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    serialization:
+      write-dates-as-timestamps: false
+
+mybatis-plus:
+  mapper-locations: classpath:mapper/**/*.xml
+  type-aliases-package: com.mall.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+jwt:
+  secret: mall-jwt-secret-key-2024-very-long-secret-key
+  # 过期时间：100 年（3155760000000ms），等于永不过期
+  expiration: 3155760000000
+
+logging:
+  level:
+    com.mall: debug
+    org.springframework: info
+
+file:
+  base-server: http://2uu4401930iw.vicp.fun:32105/sunny_file
+  base-path: D:\\soft\\apache-tomcat-8.5.63\\webapps\\sunny_file
+
+# ==================== 支付配置 ====================
+pay:
+  mock:
+    # 开发阶段默认开启 Mock, 不依赖真实商户号
+    # 上线前把 enabled 改成 false, 然后填下面 wechat 的真实参数
+    enabled: true
+    success-rate: 100
+    delay-ms: 1500
+  wechat:
+    # ====== 真实微信支付V3参数(上线时填写) ======
+    mch-id: ""
+    app-id: ""
+    api-v3-key: ""
+    private-key-path: ""
+    cert-serial-no: ""
+    # 支付回调通知URL: 必须是 https 公网地址, 微信会 POST 过来
+    # 本地开发可以用 ngrok / cpolar 等内网穿透工具临时暴露
+    notify-url: "https://your-domain.com/api/payment/wechat/notify"
+    refund-notify-url: "https://your-domain.com/api/payment/wechat/refund-notify"
+    # APP:原生APP支付  JSAPI:公众号/小程序  H5:微信外H5  NATIVE:扫码
+    trade-type: "APP"

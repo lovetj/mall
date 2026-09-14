@@ -1,0 +1,282 @@
+/* ============================================================
+   自定义 TabBar
+   图标统一规范：
+   - 视觉画布 40rpx × 40rpx，居中于 48rpx 容器
+   - 线宽统一 2rpx，圆角统一 3rpx
+   - 未选中：灰色描边（空心）  #999999
+   - 选中：主题色描边 + 局部填充 #ff5000
+   ============================================================ */
+/* ============================================================
+   自定义 TabBar
+   z-index 说明：登录弹窗已改为自绘组件（z-index: 10000），
+   层级远高于此处的 999，因此弹窗蒙版能正常覆盖 TabBar 区域。
+   ============================================================ */
+.tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* 内容区固定高度 + 安全区独立占位，避免 align-items:center 把内容挤偏 */
+  box-sizing: content-box;
+  height: 100rpx;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  border-top: 1rpx solid #eeeeee;
+  box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.04);
+  z-index: 999;
+}
+
+.tab-item {
+  flex: 1;
+  height: 100rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 图标容器：与文字行高共同构成垂直居中 */
+.tab-icon-wrap {
+  position: relative;
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 所有图标共用的画布 */
+.ico {
+  position: relative;
+  width: 40rpx;
+  height: 40rpx;
+}
+
+/* 未选中（默认）颜色 */
+.ico .home-roof,
+.ico .home-body,
+.ico .grid-cell,
+.ico .cart-handle,
+.ico .cart-body,
+.ico .cart-wheel,
+.ico .user-head,
+.ico .user-body {
+  box-sizing: border-box;
+  border-color: #999999;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+/* 选中：主题色 */
+.tab-icon-wrap.active .ico .home-roof,
+.tab-icon-wrap.active .ico .home-body,
+.tab-icon-wrap.active .ico .grid-cell,
+.tab-icon-wrap.active .ico .cart-handle,
+.tab-icon-wrap.active .ico .cart-body,
+.tab-icon-wrap.active .ico .cart-wheel,
+.tab-icon-wrap.active .ico .user-head,
+.tab-icon-wrap.active .ico .user-body {
+  border-color: #ff5000;
+}
+
+/* ============ 首页：房子（"人"字屋顶描边 + 描边房体） ============ */
+.ico-home {
+  /* 继承 .ico 的 40rpx × 40rpx 画布与 position:relative */
+  display: block;
+}
+
+/*
+ * 屋顶：用两条 2rpx 粗、15rpx 长的斜线在顶点处拼成"人"字形，
+ * 线宽与其它图标的 2rpx 描边保持一致
+ * 左斜线（以顶点为旋转轴）
+ */
+.home-roof {
+  position: absolute;
+  left: 50%;
+  top: 3rpx;
+  width: 2rpx;
+  height: 15rpx;
+  background: #999999;
+  border-radius: 1rpx;
+  transform-origin: top center;
+  /* 顶点居中：先左移半线宽，再向左倾斜 38° */
+  transform: translateX(-1rpx) rotate(-38deg);
+  transition: background-color 0.2s;
+}
+
+/* 右斜线：与左线共用顶点，向右镜像倾斜 */
+.home-roof::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2rpx;
+  height: 15rpx;
+  background: inherit;
+  border-radius: 1rpx;
+  transform-origin: top center;
+  /* 先抵消父级 -38°，再叠加 +76°，得到 +38° */
+  transform: rotate(76deg);
+}
+
+/* 房体：紧接屋顶下方，2rpx 描边 + 3rpx 圆角，与其它图标一致 */
+.home-body {
+  position: absolute;
+  left: 7rpx;
+  top: 16rpx;
+  width: 26rpx;
+  height: 20rpx;
+  border: 2rpx solid #999999;
+  border-radius: 3rpx;
+  background: transparent;
+  box-sizing: border-box;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+/* 选中态：主题色描边 + 房体填充（与分类/购物车/我的保持一致） */
+.tab-icon-wrap.active .ico-home .home-roof {
+  background: #ff5000;
+}
+
+.tab-icon-wrap.active .ico-home .home-body {
+  border-color: #ff5000;
+  background: #ff5000;
+}
+
+/* ============ 分类：四个方块 ============ */
+.ico-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: space-between;
+  justify-content: space-between;
+  padding: 1rpx;
+}
+
+.grid-cell {
+  width: 17rpx;
+  height: 17rpx;
+  border: 2rpx solid #999999;
+  border-radius: 3rpx;
+  background: transparent;
+}
+
+.tab-icon-wrap.active .ico-grid .grid-cell {
+  border-color: #ff5000;
+  background: #ff5000;
+}
+
+/* ============ 购物车：提手 + 篮身 + 轮子 ============ */
+.ico-cart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 提手 */
+.cart-handle {
+  width: 14rpx;
+  height: 8rpx;
+  border: 2rpx solid #999999;
+  border-bottom: none;
+  border-radius: 6rpx 6rpx 0 0;
+  margin-left: 6rpx;
+}
+
+/* 篮身：上宽下窄的梯形 */
+.cart-body {
+  width: 30rpx;
+  height: 18rpx;
+  border: 2rpx solid #999999;
+  border-radius: 0 0 3rpx 3rpx;
+  margin-left: 6rpx;
+}
+
+/* 轮子 */
+.cart-wheel {
+  width: 8rpx;
+  height: 8rpx;
+  border: 2rpx solid #999999;
+  border-radius: 50%;
+  background: transparent;
+  position: absolute;
+  bottom: 0;
+}
+
+.cart-wheel:nth-of-type(3) {
+  left: 8rpx;
+}
+
+.cart-wheel:nth-of-type(4) {
+  right: 2rpx;
+}
+
+.tab-icon-wrap.active .ico-cart .cart-body {
+  background: #ff5000;
+}
+
+.tab-icon-wrap.active .ico-cart .cart-wheel {
+  background: #ff5000;
+}
+
+/* ============ 我的：头 + 肩 ============ */
+.ico-user {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* 头 */
+.user-head {
+  width: 15rpx;
+  height: 15rpx;
+  border: 2rpx solid #999999;
+  border-radius: 50%;
+  background: transparent;
+  margin-bottom: 2rpx;
+}
+
+/* 肩 */
+.user-body {
+  width: 30rpx;
+  height: 16rpx;
+  border: 2rpx solid #999999;
+  border-bottom: none;
+  border-radius: 16rpx 16rpx 0 0;
+}
+
+.tab-icon-wrap.active .ico-user .user-head {
+  background: #ff5000;
+}
+
+.tab-icon-wrap.active .ico-user .user-body {
+  background: #ff5000;
+}
+
+/* ============ 文字 ============ */
+.tab-text {
+  display: block;
+  font-size: 22rpx;
+  line-height: 28rpx;
+  height: 28rpx;
+  margin-top: 2rpx;
+  transition: color 0.2s;
+}
+
+/* ============ 购物车角标 ============ */
+.tab-badge {
+  position: absolute;
+  top: -6rpx;
+  right: -20rpx;
+  min-width: 30rpx;
+  height: 30rpx;
+  padding: 0 6rpx;
+  border-radius: 15rpx;
+  background: #ff5000;
+  color: #fff;
+  font-size: 20rpx;
+  line-height: 30rpx;
+  text-align: center;
+  box-sizing: border-box;
+}

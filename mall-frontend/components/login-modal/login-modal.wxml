@@ -1,0 +1,11 @@
+<!--登录拦截弹窗：蒙版颜色由 CSS 控制，替代 wx.showModal-->
+<view wx:if="{{visible}}" class="lm-mask" bindtap="onCancel" catchtouchmove="noop">
+  <view class="lm-dialog" catchtap="noop">
+    <view class="lm-title">{{title}}</view>
+    <view class="lm-content">{{content}}</view>
+    <view class="lm-actions">
+      <view class="lm-btn lm-btn-cancel" bindtap="onCancel">{{cancelText}}</view>
+      <view class="lm-btn lm-btn-confirm" bindtap="onConfirm">{{confirmText}}</view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,63 @@
+<!--分类页-->
+<view class="page-wrap category-page">
+  <!-- 顶部搜索 -->
+  <view class="header">
+    <view class="search-bar">
+      <text class="search-icon">🔍</text>
+      <input
+        value="{{keyword}}"
+        placeholder="搜索商品"
+        placeholder-class="search-placeholder"
+        confirm-type="search"
+        focus="{{searchFocus}}"
+        bindinput="onSearchInput"
+        bindconfirm="onSearch"
+      />
+      <text wx:if="{{keyword}}" class="clear-icon" bindtap="onClearSearch">✕</text>
+    </view>
+  </view>
+
+  <!-- 左右分栏 -->
+  <view class="body">
+    <!-- 左侧类别 -->
+    <scroll-view class="side-bar" scroll-y>
+      <view
+        wx:for="{{categories}}"
+        wx:key="id"
+        class="side-item {{currentId === item.id ? 'active' : ''}}"
+        data-id="{{item.id}}"
+        data-name="{{item.name}}"
+        bindtap="onSelectCategory"
+      >
+        <text wx:if="{{item.id !== 'all'}}" class="side-icon">{{item.icon}}</text>
+        <text class="side-name">{{item.name}}</text>
+      </view>
+    </scroll-view>
+
+    <!-- 右侧商品 -->
+    <scroll-view class="goods-area" scroll-y>
+      <view class="area-title">{{currentName}}</view>
+      <view wx:if="{{goodsList.length === 0}}" class="empty">
+        <text class="empty-icon">📦</text>
+        <text>该分类暂无商品</text>
+      </view>
+      <view class="goods-list">
+        <goods-card
+          wx:for="{{goodsList}}"
+          wx:key="id"
+          goods="{{item}}"
+          layout="list"
+          bind:addcart="onAddCart"
+          bind:goodstap="onGoodsTap"
+        />
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 登录拦截弹窗（自绘，蒙版可自定义） -->
+  <login-modal
+    id="loginModal"
+    bind:confirm="onLoginModalConfirm"
+    bind:cancel="onLoginModalClose"
+  />
+</view>
