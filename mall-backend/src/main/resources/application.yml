@@ -83,3 +83,12 @@ pay:
     refund-notify-url: "https://your-domain.com/api/payment/wechat/refund-notify"
     # APP:原生APP支付  JSAPI:公众号/小程序  H5:微信外H5  NATIVE:扫码
     trade-type: "APP"
+
+# ==================== 微信基础/小程序配置 ====================
+wechat:
+  miniapp:
+    # 微信小程序 AppID 与 AppSecret，上线时填写
+    app-id: "wxc86fce4522f0739f"
+    secret: "88d43de40711d118196a830d5acfa62a"
+    # 是否支持 Mock 模式（未配置秘钥或联调时自动兼容）
+    mock: false

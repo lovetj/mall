@@ -1,27 +1,32 @@
 <!--我的页（需登录）-->
 <view class="page-wrap mine-page">
   <!-- 用户信息 -->
-  <view class="user-header">
-    <image
-      wx:if="{{userInfo.avatarUrl}}"
-      class="avatar"
-      src="{{userInfo.avatarUrl}}"
-      mode="aspectFill"
-      bindtap="onUpdateProfile"
-    ></image>
-    <view wx:else class="avatar avatar-empty" bindtap="onUpdateProfile">👤</view>
-    <view class="user-detail">
-      <view class="user-name">{{userInfo.nickName || '微信用户'}}</view>
-      <view class="user-desc">优选商城 · 尊享会员</view>
-    </view>
+  <view class="user-header" bindtap="onUserHeaderTap">
+    <block wx:if="{{isLogin}}">
+      <image
+        wx:if="{{userInfo.avatarUrl}}"
+        class="avatar"
+        src="{{userInfo.avatarUrl}}"
+        mode="aspectFill"
+      ></image>
+      <view wx:else class="avatar avatar-empty">👤</view>
+      <view class="user-detail">
+        <view class="user-name">{{userInfo.nickName || '微信用户'}}</view>
+        <view class="user-desc">优选商城 · 尊享会员</view>
+      </view>
+    </block>
+    <block wx:else>
+      <view class="avatar avatar-empty">👤</view>
+      <view class="user-detail">
+        <view class="user-name">未登录</view>
+        <view class="user-desc">点击登录，同步购物车与订单</view>
+        <view class="login-cta">立即登录</view>
+      </view>
+    </block>
   </view>
 
   <!-- 数据概览 -->
   <view class="stats card">
-    <view class="stat-item" data-key="orders" bindtap="onMenuTap">
-      <text class="stat-value">{{cartCount}}</text>
-      <text class="stat-label">购物车</text>
-    </view>
     <view class="stat-item">
       <text class="stat-value">0</text>
       <text class="stat-label">优惠券</text>
@@ -55,8 +60,8 @@
     </view>
   </view>
 
-  <!-- 退出登录 -->
-  <view class="logout-btn" bindtap="onLogout">退出登录</view>
+  <!-- 退出登录（仅登录后展示） -->
+  <view class="logout-btn" wx:if="{{isLogin}}" bindtap="onLogout">退出登录</view>
   <view class="version">优选商城 v1.0.0</view>
 
   <!-- 登录拦截弹窗（自绘，蒙版可自定义） -->

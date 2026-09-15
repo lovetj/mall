@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <link rel="stylesheet" href="/assets/uni.f8dfcabe.css">
+
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Sunny管理员端</title>
+    <style>
+      * { margin: 0; padding: 0; }
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    </style>
+    <script type="module" crossorigin src="/assets/index-LEnP951z.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DdvZNnAp.css">
+  </head>
+  <body>
+    <div id="app"></div>
+    <script>
+      // 修复 Chrome 对 uni-app H5 scroll-view 下拉刷新的被动事件监听器警告
+      (function () {
+        var originalAddEventListener = EventTarget.prototype.addEventListener
+        var forceNonPassiveTypes = {
+          touchstart: true,
+          touchmove: true,
+          touchend: true,
+          touchcancel: true,
+          wheel: true,
+          mousewheel: true
+        }
+        EventTarget.prototype.addEventListener = function (type, listener, options) {
+          if (forceNonPassiveTypes[type]) {
+            if (typeof options === 'boolean') {
+              options = false
+            } else if (options && typeof options === 'object') {
+              options.passive = false
+            } else {
+              options = { passive: false }
+            }
+          }
+          return originalAddEventListener.call(this, type, listener, options)
+        }
+      })()
+    </script>
+  </body>
+</html>

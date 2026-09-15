@@ -44,6 +44,22 @@
   opacity: 0.85;
 }
 
+/* 未登录：头部变为登录引导样式 */
+.user-header .user-desc {
+  opacity: 1;
+}
+
+.login-cta {
+  display: inline-block;
+  margin-top: 14rpx;
+  padding: 8rpx 26rpx;
+  font-size: 24rpx;
+  color: #ff5000;
+  background: #fff;
+  border-radius: 26rpx;
+  font-weight: 500;
+}
+
 /* 数据概览 */
 .stats {
   display: flex;
@@ -114,7 +130,10 @@
 
 .menu-icon {
   font-size: 40rpx;
-  margin-right: 24rpx;
+  width: 48rpx;
+  text-align: center;
+  flex-shrink: 0;
+  margin-right: 20rpx;
 }
 
 .menu-text {

@@ -88,6 +88,7 @@
             <view class="title-row">
               <text class="user-nickname">{{ item.nickname || item.username || '未设置昵称' }}</text>
               <text class="user-username" v-if="item.username">{{ item.username }}</text>
+              <text class="user-wechat-badge" v-if="item.openid">微信用户</text>
               <text class="user-status-badge" :class="{ 'status-off': item.status === 0 }">
                 {{ item.status === 1 ? '正常' : '禁用' }}
               </text>
@@ -711,6 +712,16 @@ export default {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.user-wechat-badge {
+  font-size: 20rpx;
+  padding: 4rpx 10rpx;
+  border-radius: 4rpx;
+  background: #e6f7ff;
+  color: #096dd9;
+  border: 1rpx solid #91d5ff;
+  flex-shrink: 0;
 }
 
 .user-status-badge {

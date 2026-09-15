@@ -8,8 +8,10 @@ import com.mall.dto.PayRequestDTO;
 import com.mall.dto.PayResponseDTO;
 import com.mall.entity.Order;
 import com.mall.entity.Payment;
+import com.mall.entity.User;
 import com.mall.mapper.OrderMapper;
 import com.mall.mapper.PaymentMapper;
+import com.mall.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -49,6 +51,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentMapper paymentMapper;
     private final OrderMapper orderMapper;
+    private final UserMapper userMapper;
     private final PayConfig payConfig;
 
     /** 订单状态常量 */
@@ -363,9 +366,18 @@ public class PaymentServiceImpl implements PaymentService {
         // 各交易类型特有字段
         switch (tradeType) {
             case "JSAPI":
-                if (request.getOpenid() == null) throw new IllegalStateException("JSAPI支付需要 openid");
+                String openid = request.getOpenid();
+                if (!org.springframework.util.StringUtils.hasText(openid)) {
+                    User user = userMapper.selectById(payment.getUserId());
+                    if (user != null && org.springframework.util.StringUtils.hasText(user.getOpenid())) {
+                        openid = user.getOpenid();
+                    }
+                }
+                if (!org.springframework.util.StringUtils.hasText(openid)) {
+                    throw new IllegalStateException("JSAPI支付需要 openid，请使用微信登录或传入 openid");
+                }
                 Map<String, Object> payer = new HashMap<>();
-                payer.put("openid", request.getOpenid());
+                payer.put("openid", openid);
                 body.put("payer", payer);
                 break;
             case "H5":

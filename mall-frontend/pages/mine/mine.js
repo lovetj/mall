@@ -9,6 +9,7 @@ const { formatImageUrl } = require('../../utils/config')
 
 Page(Object.assign({}, modalMixin, {
   data: {
+    isLogin: false,
     userInfo: null,
     cartCount: 0,
     orderCount: 0,
@@ -24,17 +25,24 @@ Page(Object.assign({}, modalMixin, {
     // 先同步 TabBar 选中态：即使未登录被拦截，导航签也要保持选中
     this.syncTabBar()
 
-    // 刚从登录页返回：本次 onShow 不再重复拦截（用户放弃登录也停留本页，不做任何跳转）
-    if (guard.consumeLeavingFlag()) return
+    const isLogin = auth.isLogin()
+    this.setData({ isLogin })
 
-    // 未登录拦截
-    if (!auth.isLogin()) {
-      guard.redirectToLogin({
-        redirect: '/pages/mine/mine',
-        onConfirm: () => guard.markLeavingForLogin()
-      })
+    // 刚从登录页返回：本次 onShow 的"登录拦截"被跳过（用户可能已登录或放弃了登录）
+    const leaving = guard.consumeLeavingFlag()
+
+    if (!isLogin) {
+      // 未登录：非登录返回场景则拦截去登录；登录返回后放弃登录则停留本页展示登录引导
+      if (!leaving) {
+        guard.redirectToLogin({
+          redirect: '/pages/mine/mine',
+          onConfirm: () => guard.markLeavingForLogin()
+        })
+      }
       return
     }
+
+    // 已登录：刷新用户信息（登录成功返回后也会走到这里，保证页面数据为最新）
     this.refreshUser()
   },
 
@@ -125,6 +133,18 @@ Page(Object.assign({}, modalMixin, {
     })
   },
 
+  /** 头部统一点击：已登录刷新资料，未登录跳登录页 */
+  onUserHeaderTap() {
+    if (auth.isLogin()) {
+      this.onUpdateProfile()
+      return
+    }
+    guard.redirectToLogin({
+      redirect: '/pages/mine/mine',
+      onConfirm: () => guard.markLeavingForLogin()
+    })
+  },
+
   /** 退出登录：清除登录态并返回未登录状态 */
   onLogout() {
     wx.showModal({
@@ -136,10 +156,10 @@ Page(Object.assign({}, modalMixin, {
         auth.clearLoginState()
         getApp().globalData.isLogin = false
         getApp().globalData.userInfo = null
+        // 停留当前页，刷新为未登录态（头部变登录引导、隐藏退出按钮）
+        this.setData({ isLogin: false, userInfo: null })
         util.toast('已退出登录')
-        setTimeout(() => {
-          wx.switchTab({ url: '/pages/index/index' })
-        }, 800)
+        this.syncTabBar()
       }
     })
   }

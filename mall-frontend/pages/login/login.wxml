@@ -10,25 +10,28 @@
 
   <!-- 表单区 -->
   <view class="form-area">
-    <!-- 头像选择 -->
+    <!-- 微信头像授权（open-type="chooseAvatar" 原生授权组件） -->
     <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
       <image wx:if="{{avatarUrl}}" class="avatar-preview" src="{{avatarUrl}}" mode="aspectFill"></image>
       <view wx:else class="avatar-placeholder">
         <text class="avatar-icon">👤</text>
-        <text class="avatar-tip">点击获取头像</text>
+        <text class="avatar-tip">微信头像</text>
       </view>
     </button>
 
-    <!-- 昵称输入 -->
-    <view class="input-row">
+    <!-- 微信昵称授权（type="nickname" 原生授权组件，聚焦后弹出微信昵称气泡） -->
+    <view class="input-row {{nicknameFocus ? 'focusing' : ''}}">
       <text class="input-label">昵称</text>
       <input
         class="input"
         type="nickname"
         value="{{nickName}}"
-        placeholder="点击获取微信昵称"
+        placeholder="{{nickName ? nickName : (avatarUrl ? '点击键盘上方昵称气泡一键填入' : '微信授权后将自动填入')}}"
         placeholder-class="input-placeholder"
+        focus="{{nicknameFocus}}"
         bindinput="onNicknameInput"
+        bindblur="onNicknameBlur"
+        bindchange="onNicknameChange"
       />
     </view>
 
@@ -40,13 +43,20 @@
       <text class="agree-text">我已阅读并同意《用户协议》和《隐私政策》</text>
     </view>
 
-    <!-- 登录按钮 -->
-    <button class="login-btn" bindtap="onLogin" loading="{{loading}}" disabled="{{loading}}">
+    <!-- 授权并登录按钮（未授权头像时，按钮本身就是微信头像授权入口） -->
+    <button
+      class="login-btn"
+      open-type="{{avatarUrl ? '' : 'chooseAvatar'}}"
+      bindchooseavatar="onChooseAvatar"
+      bindtap="onLogin"
+      loading="{{loading}}"
+      disabled="{{loading}}"
+    >
       {{loading ? '登录中...' : '微信授权登录'}}
     </button>
 
     <view class="cancel-btn" bindtap="onCancel">暂不登录，先逛逛</view>
   </view>
 
-  <view class="login-tip">优选商城仅获取头像与昵称用于展示，不会泄露您的隐私</view>
+  <view class="login-tip">点击登录即调用微信原生授权获取您的头像与昵称，仅用于展示</view>
 </view>

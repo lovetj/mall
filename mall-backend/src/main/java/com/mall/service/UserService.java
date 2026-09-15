@@ -5,14 +5,20 @@ import com.mall.common.PageResult;
 import com.mall.dto.LoginDTO;
 import com.mall.dto.PageDTO;
 import com.mall.dto.UserDTO;
+import com.mall.dto.WxLoginDTO;
 import com.mall.entity.User;
 
 import java.util.List;
+import java.util.Map;
 
 public interface UserService extends IService<User> {
     String login(LoginDTO dto);
 
+    Map<String, Object> wxLogin(WxLoginDTO dto);
+
     User getByUsername(String username);
+
+    User getByOpenid(String openid);
 
     void register(LoginDTO dto);
 

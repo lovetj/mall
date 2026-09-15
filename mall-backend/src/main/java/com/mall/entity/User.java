@@ -20,6 +20,13 @@ public class User implements Serializable {
 
     private String phone;
 
+    private String openid;
+
+    private String unionid;
+
+    /** 微信会话密钥 session_key（登录时从微信返回，用于解密敏感数据，如手机号） */
+    private String sessionKey;
+
     private String avatar;
 
     private String nickname;

@@ -15,6 +15,10 @@ public class UserDTO {
 
     private String phone;
 
+    private String openid;
+
+    private String unionid;
+
     private String avatar;
 
     private String nickname;

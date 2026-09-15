@@ -4,6 +4,7 @@ import com.mall.common.PageResult;
 import com.mall.dto.BatchStatusDTO;
 import com.mall.dto.LoginDTO;
 import com.mall.dto.UserDTO;
+import com.mall.dto.WxLoginDTO;
 import com.mall.entity.User;
 import com.mall.service.UserService;
 import com.mall.util.JwtUtil;
@@ -43,6 +44,12 @@ public class UserController {
         Map<String, Object> data = new HashMap<>();
         data.put("token", token);
         data.put("user", user);
+        return Result.success(data);
+    }
+
+    @PostMapping("/wx-login")
+    public Result<Map<String, Object>> wxLogin(@Valid @RequestBody WxLoginDTO dto) {
+        Map<String, Object> data = userService.wxLogin(dto);
         return Result.success(data);
     }
 

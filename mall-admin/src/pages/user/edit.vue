@@ -16,6 +16,16 @@
           />
         </view>
 
+        <!-- 微信OpenID（只读） -->
+        <view class="form-item" v-if="form.openid">
+          <text class="form-label">微信 OpenID</text>
+          <input
+            class="form-input disabled-input"
+            :value="form.openid"
+            disabled
+          />
+        </view>
+
         <!-- 密码 -->
         <view class="form-item">
           <text class="form-label">{{ userId ? '密码 (留空则不修改)' : '登录密码' }}</text>
@@ -123,6 +133,7 @@ export default {
         password: '',
         nickname: '',
         phone: '',
+        openid: '',
         avatar: '',
         status: 1
       }
@@ -166,6 +177,7 @@ export default {
             password: '',
             nickname: data.nickname || '',
             phone: data.phone || '',
+            openid: data.openid || '',
             avatar: data.avatar || '',
             status: data.status !== undefined ? data.status : 1
           }
@@ -327,6 +339,12 @@ export default {
 .form-input:focus {
   background: #fff;
   border-color: #1890ff;
+}
+
+.disabled-input {
+  background-color: #f5f5f5;
+  color: #8c8c8c;
+  cursor: not-allowed;
 }
 
 .image-upload-wrap {

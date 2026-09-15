@@ -55,6 +55,10 @@ const api = {
   },
 
   // ==================== 用户认证与资料 ====================
+  wxLogin(data) {
+    return request.post('/user/wx-login', data)
+  },
+
   login(data) {
     return request.post('/user/login', data)
   },

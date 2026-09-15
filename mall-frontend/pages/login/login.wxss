@@ -45,7 +45,7 @@
   flex-direction: column;
 }
 
-/* 头像 */
+/* 头像（open-type="chooseAvatar" 原生授权组件） */
 .avatar-btn {
   background: transparent;
   padding: 0;
@@ -55,6 +55,11 @@
   height: 180rpx;
   border-radius: 50%;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  flex-shrink: 0;
 }
 
 .avatar-btn::after {
@@ -88,13 +93,18 @@
   color: #999;
 }
 
-/* 输入行 */
+/* 昵称输入行（type="nickname" 原生授权组件） */
 .input-row {
   display: flex;
   align-items: center;
   height: 100rpx;
   border-bottom: 1rpx solid #eee;
   margin-bottom: 40rpx;
+  transition: border-color 0.2s;
+}
+
+.input-row.focusing {
+  border-bottom: 2rpx solid #ff5000;
 }
 
 .input-label {
@@ -144,15 +154,18 @@
   color: #666;
 }
 
-/* 登录按钮 */
+/* 登录按钮（未授权头像时即微信头像授权入口） */
 .login-btn {
   height: 92rpx;
-  line-height: 92rpx;
+  line-height: normal;
   border-radius: 46rpx;
   background: linear-gradient(90deg, #ff7a1a, #ff5000);
   color: #fff;
   font-size: 32rpx;
   margin-bottom: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .login-btn::after {

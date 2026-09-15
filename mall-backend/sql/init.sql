@@ -57,18 +57,22 @@ CREATE TABLE IF NOT EXISTS `product` (
 
 -- 用户表
 CREATE TABLE IF NOT EXISTS `user` (
-                                      `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-                                      `username` VARCHAR(50) NOT NULL COMMENT '用户名',
-    `password` VARCHAR(100) NOT NULL COMMENT '密码',
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `username` VARCHAR(50) NOT NULL COMMENT '用户名',
+    `password` VARCHAR(100) DEFAULT NULL COMMENT '密码(微信免密用户可为空)',
     `phone` VARCHAR(20) DEFAULT NULL COMMENT '手机号',
+    `openid` VARCHAR(64) DEFAULT NULL COMMENT '微信小程序openid',
+    `unionid` VARCHAR(64) DEFAULT NULL COMMENT '微信开放平台unionid',
     `avatar` VARCHAR(255) DEFAULT NULL COMMENT '头像',
     `nickname` VARCHAR(50) DEFAULT NULL COMMENT '昵称',
     `status` TINYINT DEFAULT 1 COMMENT '状态 0禁用 1正常',
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_username` (`username`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
+    UNIQUE KEY `uk_username` (`username`),
+    UNIQUE KEY `uk_openid` (`openid`),
+    KEY `idx_unionid` (`unionid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
 -- 购物车表
 CREATE TABLE IF NOT EXISTS `cart` (

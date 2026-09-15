@@ -241,15 +241,20 @@ DROP TABLE IF EXISTS `user`;
 CREATE TABLE `user` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `username` varchar(50) NOT NULL COMMENT '用户名',
-  `password` varchar(100) NOT NULL COMMENT '密码',
+  `password` varchar(100) DEFAULT NULL COMMENT '密码(微信免密用户可为空)',
   `phone` varchar(20) DEFAULT NULL COMMENT '手机号',
+  `openid` varchar(64) DEFAULT NULL COMMENT '微信小程序openid',
+  `unionid` varchar(64) DEFAULT NULL COMMENT '微信开放平台unionid',
+  `session_key` varchar(128) DEFAULT NULL COMMENT '微信会话密钥session_key(仅服务端保存)',
   `avatar` varchar(255) DEFAULT NULL COMMENT '头像',
   `nickname` varchar(50) DEFAULT NULL COMMENT '昵称',
   `status` tinyint DEFAULT '1' COMMENT '状态 0禁用 1正常',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_username` (`username`)
+  UNIQUE KEY `uk_username` (`username`),
+  UNIQUE KEY `uk_openid` (`openid`),
+  KEY `idx_unionid` (`unionid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户表';
 
 INSERT INTO `user` (`id`, `username`, `password`, `phone`, `avatar`, `nickname`, `status`, `create_time`, `update_time`) VALUES (1, 'user', '$2a$10$rjet.LriLzGqBZ9StUj0QeBKAnojolx.fgAqVWlhC7KgvRiQSb4z.', '13800138001', NULL, '测试用户', 1, '2026-09-14 20:39:46', '2026-09-15 01:07:54');
