@@ -84,7 +84,7 @@
     <!-- 底部占位：避免内容被固定操作栏遮挡 -->
     <view class="bottom-placeholder"></view>
 
-    <!-- 底部操作栏：左侧购物车 + 加入购物车 / 立即购买 -->
+    <!-- 底部操作栏：左侧购物车 + 加入购物车 -->
     <view class="bottom-bar">
       <view class="bar-cart" bindtap="goCart">
         <text class="bar-cart-icon">🛒</text>
@@ -93,7 +93,6 @@
       </view>
       <view class="bar-actions">
         <view class="bar-btn btn-add" bindtap="onAddCart">加入购物车</view>
-        <view class="bar-btn btn-buy" bindtap="onBuyNow">立即购买</view>
       </view>
     </view>
   </block>
@@ -128,9 +127,7 @@
         </view>
       </view>
 
-      <view class="popup-btn" bindtap="onConfirmQuantity">
-        {{actionType === 'buy' ? '立即购买' : '加入购物车'}}
-      </view>
+      <view class="popup-btn" bindtap="onConfirmQuantity">加入购物车</view>
     </view>
   </view>
 

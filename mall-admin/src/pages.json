@@ -1,0 +1,110 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "管理后台"
+      }
+    },
+    {
+      "path": "pages/login/login",
+      "style": {
+        "navigationBarTitleText": "登录"
+      }
+    },
+    {
+      "path": "pages/product/list",
+      "style": {
+        "navigationBarTitleText": "商品管理",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/product/edit",
+      "style": {
+        "navigationBarTitleText": "编辑商品",
+        "app-plus": {
+          "bounce": "none"
+        }
+      }
+    },
+    {
+      "path": "pages/category/list",
+      "style": {
+        "navigationBarTitleText": "分类管理"
+      }
+    },
+    {
+      "path": "pages/category/edit",
+      "style": {
+        "navigationBarTitleText": "编辑分类",
+        "app-plus": {
+          "bounce": "none"
+        }
+      }
+    },
+    {
+      "path": "pages/tag/list",
+      "style": {
+        "navigationBarTitleText": "商品标签管理"
+      }
+    },
+    {
+      "path": "pages/tag/edit",
+      "style": {
+        "navigationBarTitleText": "编辑商品标签",
+        "app-plus": {
+          "bounce": "none"
+        }
+      }
+    },
+    {
+      "path": "pages/banner/list",
+      "style": {
+        "navigationBarTitleText": "轮播图管理"
+      }
+    },
+    {
+      "path": "pages/banner/edit",
+      "style": {
+        "navigationBarTitleText": "编辑轮播图",
+        "app-plus": {
+          "bounce": "none"
+        }
+      }
+    },
+    {
+      "path": "pages/order/list",
+      "style": {
+        "navigationBarTitleText": "订单管理"
+      }
+    },
+    {
+      "path": "pages/user/list",
+      "style": {
+        "navigationBarTitleText": "用户管理"
+      }
+    },
+    {
+      "path": "pages/user/edit",
+      "style": {
+        "navigationBarTitleText": "编辑用户",
+        "app-plus": {
+          "bounce": "none"
+        }
+      }
+    },
+    {
+      "path": "pages/config/config",
+      "style": {
+        "navigationBarTitleText": "系统配置"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "Sunny管理后台",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f5f5f5"
+  }
+}

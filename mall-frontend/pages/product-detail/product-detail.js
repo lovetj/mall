@@ -19,7 +19,6 @@ Page(Object.assign({}, modalMixin, {
     cartCount: 0,
     // 数量选择弹窗
     showQuantity: false,
-    actionType: 'cart',
     quantity: 1,
     // 加载状态：loading | success | empty
     loadState: 'loading'
@@ -148,18 +147,7 @@ Page(Object.assign({}, modalMixin, {
     guard.ensureLogin({
       content: '登录后才能加入购物车，是否前往登录？',
       action: { type: 'addCart', goods: product },
-      success: () => this.openQuantityPopup('cart')
-    })
-  },
-
-  /** 立即购买：需登录（续做逻辑同上） */
-  onBuyNow() {
-    const product = this.data.product
-    if (!product) return
-    guard.ensureLogin({
-      content: '登录后才能购买，是否前往登录？',
-      action: { type: 'buyNow', goods: product },
-      success: () => this.openQuantityPopup('buy')
+      success: () => this.openQuantityPopup()
     })
   },
 
@@ -172,13 +160,12 @@ Page(Object.assign({}, modalMixin, {
       this.refreshCart()
       return
     }
-    if (action.type === 'addCart') this.openQuantityPopup('cart')
-    else if (action.type === 'buyNow') this.openQuantityPopup('buy')
+    if (action.type === 'addCart') this.openQuantityPopup()
   },
 
   /** 打开数量选择弹窗 */
-  openQuantityPopup(actionType) {
-    this.setData({ actionType, quantity: 1, showQuantity: true })
+  openQuantityPopup() {
+    this.setData({ quantity: 1, showQuantity: true })
   },
 
   closeQuantity() {
@@ -204,31 +191,16 @@ Page(Object.assign({}, modalMixin, {
     }
   },
 
-  /** 确认加入购物车 / 立即购买 */
+  /** 确认加入购物车 */
   onConfirmQuantity() {
     const product = this.data.product
     if (!product) return
     const quantity = this.data.quantity
-    const isBuy = this.data.actionType === 'buy'
 
-    // 加入购物车（立即购买也先入购物车，再跳转购物车结算）
-    const list = cart.addToCart(product, quantity)
-
-    // 立即购买：只勾选本次购买的商品，其余商品取消勾选，便于直接结算
-    if (isBuy) {
-      cart.saveCart(list.map((item) => ({
-        ...item,
-        checked: item.productId === product.id || item.id === product.id
-      })))
-    }
+    cart.addToCart(product, quantity)
 
     this.setData({ showQuantity: false })
     this.refreshCart()
-
-    if (isBuy) {
-      this.goCart()
-    } else {
-      wx.showToast({ title: '已加入购物车', icon: 'success' })
-    }
+    wx.showToast({ title: '已加入购物车', icon: 'success' })
   }
 }))

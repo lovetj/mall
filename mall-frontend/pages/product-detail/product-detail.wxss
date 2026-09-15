@@ -272,13 +272,9 @@
 
 .btn-add {
   background: linear-gradient(135deg, #ff8a3d, #ff5000);
-  border-radius: 40rpx 0 0 40rpx;
+  border-radius: 40rpx;
 }
 
-.btn-buy {
-  background: linear-gradient(135deg, #ff5a2b, #e63c00);
-  border-radius: 0 40rpx 40rpx 0;
-}
 
 .bar-btn:active {
   opacity: 0.85;
