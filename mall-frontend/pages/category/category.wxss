@@ -74,6 +74,12 @@
   text-overflow: ellipsis;
 }
 
+/* 「全部」：无图标且文字居中 */
+.side-item.side-item-center {
+  justify-content: center;
+  padding-right: 24rpx;
+}
+
 .side-item.active {
   background: #fff;
   color: #ff5000;
@@ -99,38 +105,74 @@
   background: #fff;
 }
 
-.area-title {
-  font-size: 30rpx;
-  font-weight: 600;
-  padding: 24rpx 0 12rpx;
-  color: #222;
+.goods-list {
+  padding: 20rpx 20rpx 60rpx;
 }
 
-.goods-list {
-  padding-bottom: 40rpx;
+/* 空状态：在右侧列表区域内上下居中 */
+.empty-center {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.empty-center .empty-icon {
+  font-size: 160rpx;
+  margin-bottom: 32rpx;
 }
 
 /* 列表商品：原生视图渲染，完全控制宽度和省略号 */
+/* 卡片样式：柔和圆角 + 浅底 + 极淡描边，靠底色和留白拉出层次 */
 .list-goods {
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  background: #fff;
-  border-radius: 16rpx;
+  background: #fafafa;
+  border-radius: 24rpx;
   overflow: hidden;
-  padding: 20rpx;
+  padding: 16rpx;
   margin-bottom: 20rpx;
   width: 80%;
   max-width: 80%;
   box-sizing: border-box;
+  border: 2rpx solid #f2f3f5;
+}
+
+/* 按下反馈：仅做轻微变暗，避免夸张 */
+.list-goods.card-hover {
+  background: #f4f5f7;
+  opacity: 1;
 }
 
 .list-goods-img {
-  width: 200rpx;
-  height: 200rpx;
-  border-radius: 12rpx;
+  width: 180rpx;
+  height: 180rpx;
+  border-radius: 16rpx;
   flex-shrink: 0;
-  background: #f5f6f8;
+  background: #fff;
+  overflow: hidden;
+}
+
+/* 无图片占位：保持图片区域尺寸，居中展示提示 */
+.list-goods-img-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.list-goods-img-icon {
+  font-size: 44rpx;
+  line-height: 1;
+  margin-bottom: 10rpx;
+  opacity: 0.5;
+}
+
+.list-goods-img-text {
+  font-size: 22rpx;
+  color: #9aa0a6;
 }
 
 .list-goods-info {

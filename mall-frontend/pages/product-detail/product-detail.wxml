@@ -1,0 +1,143 @@
+<!--商品详情页-->
+<view class="page-wrap detail-page">
+
+  <!-- 加载中 -->
+  <view class="state-box" wx:if="{{loadState === 'loading'}}">
+    <view class="loading-spin"></view>
+    <text class="state-text">加载中...</text>
+  </view>
+
+  <!-- 空态 / 接口异常：不降级本地假数据 -->
+  <view class="state-box" wx:elif="{{loadState === 'empty'}}">
+    <text class="state-icon">📦</text>
+    <text class="state-text">商品不存在或已下架</text>
+  </view>
+
+  <block wx:else>
+    <!-- 轮播图：图片取自接口 images 字段 -->
+    <view class="swiper-wrap">
+      <swiper
+        class="detail-swiper"
+        indicator-dots
+        indicator-color="rgba(255,255,255,0.5)"
+        indicator-active-color="#ffffff"
+        autoplay
+        circular
+        interval="4000"
+        duration="500"
+      >
+        <swiper-item wx:for="{{swiperImages}}" wx:key="*this">
+          <image
+            class="swiper-image"
+            src="{{item}}"
+            mode="aspectFill"
+            data-url="{{item}}"
+            bindtap="onPreviewImage"
+          />
+        </swiper-item>
+        <swiper-item wx:if="{{swiperImages.length === 0}}">
+          <view class="swiper-placeholder">
+            <text class="swiper-placeholder-icon">🖼️</text>
+            <text class="swiper-placeholder-text">暂无图片</text>
+          </view>
+        </swiper-item>
+      </swiper>
+    </view>
+
+    <!-- 名称、价格、销量、标签 -->
+    <view class="info-card">
+      <view class="price-row">
+        <view class="price">
+          <text class="price-symbol">¥</text>
+          <text class="price-value price-value-lg">{{priceText}}</text>
+          <text class="price-unit" wx:if="{{product.unit}}">/{{product.unit}}</text>
+        </view>
+        <view class="sales-info">
+          <text class="sales-text">已售 {{salesText}}</text>
+        </view>
+      </view>
+
+      <view class="goods-name">{{product.name}}</view>
+
+      <!-- 商品标签：由接口 tagList 渲染，标签前展示标签图片 -->
+      <view class="tag-list" wx:if="{{tagList.length > 0}}">
+        <view
+          class="tag-badge {{item.isHotselling ? 'tag-hot' : ''}}"
+          wx:for="{{tagList}}"
+          wx:key="id"
+        >
+          <image wx:if="{{item.image}}" class="tag-icon" src="{{item.image}}" mode="aspectFit" />
+          <text class="tag-name {{item.isHotselling ? 'tag-name-hot' : ''}}">{{item.name}}</text>
+        </view>
+      </view>
+
+    </view>
+
+    <!-- 商品描述 -->
+    <view class="desc-card">
+      <view class="desc-title">商品描述</view>
+      <view class="desc-content">
+        {{product.description || '暂无描述'}}
+      </view>
+    </view>
+
+    <!-- 底部占位：避免内容被固定操作栏遮挡 -->
+    <view class="bottom-placeholder"></view>
+
+    <!-- 底部操作栏：左侧购物车 + 加入购物车 / 立即购买 -->
+    <view class="bottom-bar">
+      <view class="bar-cart" bindtap="goCart">
+        <text class="bar-cart-icon">🛒</text>
+        <text class="bar-cart-text">购物车</text>
+        <view class="cart-badge" wx:if="{{cartCount > 0}}">{{cartCount}}</view>
+      </view>
+      <view class="bar-actions">
+        <view class="bar-btn btn-add" bindtap="onAddCart">加入购物车</view>
+        <view class="bar-btn btn-buy" bindtap="onBuyNow">立即购买</view>
+      </view>
+    </view>
+  </block>
+
+  <!-- 数量选择弹窗 -->
+  <view class="quantity-popup" wx:if="{{showQuantity}}">
+    <view class="popup-mask" bindtap="closeQuantity"></view>
+    <view class="popup-content" catchtap="noop">
+      <view class="popup-header">
+        <image
+          wx:if="{{swiperImages[0]}}"
+          class="popup-image"
+          src="{{swiperImages[0]}}"
+          mode="aspectFill"
+        />
+        <view wx:else class="popup-image popup-image-empty">🖼️</view>
+        <view class="popup-info">
+          <view class="price">
+            <text class="price-symbol">¥</text>
+            <text class="price-value">{{priceText}}</text>
+          </view>
+        </view>
+        <view class="popup-close" bindtap="closeQuantity">✕</view>
+      </view>
+
+      <view class="quantity-row">
+        <text class="quantity-label">购买数量</text>
+        <view class="quantity-control">
+          <view class="control-btn {{quantity <= 1 ? 'disabled' : ''}}" bindtap="onDecrease">-</view>
+          <text class="control-num">{{quantity}}</text>
+          <view class="control-btn" bindtap="onIncrease">+</view>
+        </view>
+      </view>
+
+      <view class="popup-btn" bindtap="onConfirmQuantity">
+        {{actionType === 'buy' ? '立即购买' : '加入购物车'}}
+      </view>
+    </view>
+  </view>
+
+  <!-- 登录拦截弹窗（自绘，蒙版可自定义） -->
+  <login-modal
+    id="loginModal"
+    bind:confirm="onLoginModalConfirm"
+    bind:cancel="onLoginModalClose"
+  />
+</view>

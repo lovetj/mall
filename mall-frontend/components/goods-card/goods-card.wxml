@@ -1,7 +1,18 @@
 <!--商品卡片-->
 <view class="goods-card {{layout === 'list' ? 'is-list' : ''}}" bindtap="onTap" hover-class="card-hover">
   <view class="goods-img">
-    <image src="{{displayImage || goods.image}}" mode="aspectFill" lazy-load></image>
+    <image
+      wx:if="{{displayImage}}"
+      src="{{displayImage}}"
+      mode="aspectFill"
+      lazy-load
+      binderror="onImageError"
+    ></image>
+    <!-- 无图片（接口未返回图片或加载失败）时展示占位文案 -->
+    <view wx:else class="goods-img-placeholder">
+      <text class="goods-img-placeholder-icon">🖼️</text>
+      <text class="goods-img-placeholder-text">无图片</text>
+    </view>
   </view>
   <view class="goods-info">
     <view class="goods-name ellipsis-2">{{goods.name}}</view>

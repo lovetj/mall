@@ -1,8 +1,6 @@
 /**首页：搜索框 + 轮播图 + 热销商品 */
-const mock = require('../../utils/mock')
 const cart = require('../../utils/cart')
 const guard = require('../../utils/guard')
-const util = require('../../utils/util')
 const modalMixin = require('../../utils/modal-mixin')
 const api = require('../../utils/api')
 const { formatImageUrl } = require('../../utils/config')
@@ -41,17 +39,51 @@ Page(Object.assign({}, modalMixin, {
     })
   },
 
-  /** 加载轮播图 */
+  /**
+   * 加载轮播图
+   * 接口失败 / 返回空数组 / 有效图片为空时，降级为 3 条无图片的占位轮播
+   */
   loadBanners() {
     api.getBannerList().then((res) => {
-      const banners = (res || []).map((item) => ({
+      const list = Array.isArray(res) ? res : []
+      const banners = list.map((item) => ({
         ...item,
         image: formatImageUrl(item.image)
       }))
-      this.setData({ banners })
+      this.setData({ banners: this.normalizeBanners(banners) })
     }).catch(() => {
-      this.setData({ banners: [] })
+      this.setData({ banners: this.buildPlaceholderBanners() })
     })
+  },
+
+  /** 无图片的占位轮播（默认 3 条） */
+  buildPlaceholderBanners() {
+    const count = 3
+    const banners = []
+    for (let i = 0; i < count; i++) {
+      banners.push({ id: `placeholder-${i}`, image: '', title: '', link: '' })
+    }
+    return banners
+  },
+
+  /** 轮播图兜底：数据为空或全部无有效图片时，替换为占位轮播 */
+  normalizeBanners(banners) {
+    const list = banners || []
+    if (list.length === 0) return this.buildPlaceholderBanners()
+
+    const hasValidImage = list.some((item) => {
+      const image = item && item.image
+      return typeof image === 'string' ? image.trim() !== '' : !!image
+    })
+    if (hasValidImage) return list
+
+    // 保持接口条数（最多 3 条）展示无图片轮播
+    if (list.length >= 3) {
+      return list.map((item) => ({ ...item, image: '' }))
+    }
+
+    const placeholders = this.buildPlaceholderBanners()
+    return list.map((item, index) => ({ ...placeholders[index], ...item, image: '' }))
   },
 
   /** 按下轮播图：可跳转时才触发按压动画 */
@@ -91,33 +123,24 @@ Page(Object.assign({}, modalMixin, {
     }, 150)
   },
 
-  /** 加载商品分类 */
+  /**
+   * 加载商品分类
+   * 接口失败 / 返回空数组 / 名称为空字符串时，清空分类并展示「暂无数据」空态
+   */
   loadCategories() {
-    api.getCategoryList().then((res) => {
-      const list = res || []
-      if (list.length > 0) {
-        const categories = list.map((c) => ({
+    return api.getCategoryList().then((res) => {
+      const list = Array.isArray(res) ? res : []
+      const categories = list
+        .filter((c) => c && typeof c.name === 'string' && c.name.trim() !== '')
+        .map((c) => ({
           id: c.id,
           name: c.name,
           icon: formatImageUrl(c.icon)
         }))
-        this.setData({ categories })
-      } else {
-        this.useMockCategories()
-      }
+      this.setData({ categories: categories.length > 0 ? categories : [] })
     }).catch(() => {
-      this.useMockCategories()
+      this.setData({ categories: [] })
     })
-  },
-
-  /** 分类接口不可用时降级到本地 mock */
-  useMockCategories() {
-    const categories = (mock.categories || []).map((c) => ({
-      id: c.id,
-      name: c.name,
-      icon: c.icon || '🏷️'
-    }))
-    this.setData({ categories })
   },
 
   /** 点击分类：跳转分类页并定位到该分类 */
@@ -186,13 +209,12 @@ Page(Object.assign({}, modalMixin, {
         hotGoods = (this.data.hotGoods || []).concat(formatted)
       }
 
-      // 若接口返回为空且重置时，降级展示 mock 数据
+      // 接口返回为空时不再降级 mock，直接展示「暂无数据」空态
       if (hotGoods.length === 0 && reset) {
-        const mockList = mock.getHotGoods(pageSize)
         this.setData({
-          hotGoods: mockList,
+          hotGoods: [],
           pageNum: 1,
-          total: mockList.length,
+          total: 0,
           hasMore: false,
           noMore: true,
           loadingMore: false
@@ -212,12 +234,12 @@ Page(Object.assign({}, modalMixin, {
         loadingMore: false
       })
     }).catch(() => {
-      if (reset && (!this.data.hotGoods || this.data.hotGoods.length === 0)) {
-        const mockList = mock.getHotGoods(pageSize)
+      // 接口异常：首次加载时清空列表展示「暂无数据」，加载更多时保留已有数据
+      if (reset) {
         this.setData({
-          hotGoods: mockList,
+          hotGoods: [],
           pageNum: 1,
-          total: mockList.length,
+          total: 0,
           hasMore: false,
           noMore: true,
           loadingMore: false
@@ -347,11 +369,13 @@ Page(Object.assign({}, modalMixin, {
     this.refreshCart()
   },
 
-  /** 点击商品卡片 */
+  /** 点击商品卡片：跳转商品详情页 */
   onGoodsTap(e) {
     const goods = e && e.detail && e.detail.goods
-    if (!goods || !goods.name) return
-    util.toast(`${goods.name} ¥${goods.price}`)
+    if (!goods || !goods.id) return
+    wx.navigateTo({
+      url: `/pages/product-detail/product-detail?id=${goods.id}`
+    })
   },
 
   /** 点击搜索框：跳转分类页（默认「全部」），并让分类页聚焦搜索框 */

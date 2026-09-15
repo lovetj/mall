@@ -1,8 +1,6 @@
 /**分类页：左侧类别 + 右侧商品，免登录可访问 */
-const mock = require('../../utils/mock')
 const cart = require('../../utils/cart')
 const guard = require('../../utils/guard')
-const util = require('../../utils/util')
 const modalMixin = require('../../utils/modal-mixin')
 const api = require('../../utils/api')
 const { formatImageUrl } = require('../../utils/config')
@@ -42,7 +40,7 @@ Page(Object.assign({}, modalMixin, {
     return api.getCategoryList().then((res) => {
       const list = res || []
       const categories = [
-        { id: 'all', name: '全部', icon: '🧺' },
+        { id: 'all', name: '全部', icon: '', centerOnly: true },
         { id: 'hot', name: '热销商品', icon: '🔥' },
         ...list.map((c) => {
           const icon = formatImageUrl(c.icon)
@@ -70,29 +68,20 @@ Page(Object.assign({}, modalMixin, {
         this.loadProducts(first.id)
       }
     }).catch(() => {
-      this.useMockCategories()
-    })
-  },
-
-  useMockCategories() {
-    const categories = mock.categories
-    const first = categories[0]
-    this.setData({
-      categories,
-      currentId: first.id,
-      currentName: first.name,
-      currentIcon: first.icon,
-      goodsList: mock.getGoodsByCategory(first.id),
-      pageNum: 1,
-      total: 0,
-      noMore: true,
-      loadingMore: false
-    })
-    if (this.pendingCategory) {
-      const pending = this.pendingCategory
+      // 接口报错 / 超时 / 无数据：左侧树置空，右侧展示空状态，不再降级本地测试数据
+      this.setData({
+        categories: [],
+        currentId: '',
+        currentName: '',
+        currentIcon: '',
+        goodsList: [],
+        pageNum: 1,
+        total: 0,
+        loadingMore: false,
+        noMore: false
+      })
       this.pendingCategory = null
-      this.selectCategory(pending)
-    }
+    })
   },
 
   /**
@@ -146,8 +135,17 @@ Page(Object.assign({}, modalMixin, {
   refreshCategories(currentId) {
     return api.getCategoryList().then((res) => {
       const list = res || []
+      // 接口无数据时同样不降级到本地测试数据，直接清空左侧树
+      if (!list.length) {
+        this.setData({
+          categories: [],
+          currentId: '',
+          currentIcon: ''
+        })
+        return
+      }
       const categories = [
-        { id: 'all', name: '全部', icon: '🧺' },
+        { id: 'all', name: '全部', icon: '', centerOnly: true },
         { id: 'hot', name: '热销商品', icon: '🔥' },
         ...list.map((c) => {
           const icon = formatImageUrl(c.icon)
@@ -240,16 +238,11 @@ Page(Object.assign({}, modalMixin, {
         this.setData({ noMore: true, loadingMore: false })
         return
       }
-      // 接口异常降级到本地 mock
-      let list = mock.getGoodsByCategory(categoryId)
-      if (params.keyword) {
-        const kw = params.keyword.toLowerCase()
-        list = list.filter((item) => (item.name || '').toLowerCase().indexOf(kw) > -1)
-      }
+      // 接口异常 / 超时 / 无数据：不再降级到本地测试数据，直接展示空状态
       this.setData({
-        goodsList: list,
+        goodsList: [],
         pageNum: 1,
-        total: list.length,
+        total: 0,
         noMore: true,
         loadingMore: false
       })
@@ -462,8 +455,10 @@ Page(Object.assign({}, modalMixin, {
 
   onGoodsTap(e) {
     const goods = e && e.detail && e.detail.goods
-    if (!goods || !goods.name) return
-    util.toast(`${goods.name} ¥${goods.price}`)
+    if (!goods || !goods.id) return
+    wx.navigateTo({
+      url: `/pages/product-detail/product-detail?id=${goods.id}`
+    })
   },
 
   /** 列表项加购（原生渲染，无组件事件） */
@@ -479,11 +474,20 @@ Page(Object.assign({}, modalMixin, {
     })
   },
 
-  /** 列表项点击（原生渲染，无组件事件） */
+  /** 列表项图片加载失败：清空图片地址以回退为「无图片」占位 */
+  onListImageError(e) {
+    const idx = e.currentTarget.dataset.index
+    if (idx === undefined || idx === null) return
+    this.setData({ [`goodsList[${idx}].image`]: '' })
+  },
+
+  /** 列表项点击（原生渲染，无组件事件）：跳转商品详情页 */
   onListItemTap(e) {
     const idx = e.currentTarget.dataset.index
     const goods = this.data.goodsList[idx]
-    if (!goods || !goods.name) return
-    util.toast(`${goods.name} ¥${goods.price}`)
+    if (!goods || !goods.id) return
+    wx.navigateTo({
+      url: `/pages/product-detail/product-detail?id=${goods.id}`
+    })
   }
 }))

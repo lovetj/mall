@@ -46,6 +46,10 @@ Component({
     /** 点击卡片，抛出 goodstap 自定义事件 */
     onTap() {
       this.triggerEvent('goodstap', { goods: this.data.goods })
+    },
+    /** 图片加载失败：清空地址以回退为「无图片」占位 */
+    onImageError() {
+      this.setData({ displayImage: '' })
     }
   }
 })

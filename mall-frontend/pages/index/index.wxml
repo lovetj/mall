@@ -9,23 +9,6 @@
     </view>
   </view>
 
-  <!-- 商品分类 -->
-  <view class="cate-wrap" wx:if="{{categories.length > 0}}">
-    <view
-      class="cate-item"
-      wx:for="{{categories}}"
-      wx:key="id"
-      data-index="{{index}}"
-      bindtap="onCategoryTap"
-    >
-      <view class="cate-icon">
-        <image wx:if="{{item.icon}}" src="{{item.icon}}" mode="aspectFill" lazy-load />
-        <text wx:else>🏷️</text>
-      </view>
-      <text class="cate-name">{{item.name}}</text>
-    </view>
-  </view>
-
   <!-- 轮播图 -->
   <view class="banner-wrap">
     <swiper
@@ -47,13 +30,39 @@
           bindtouchcancel="onBannerTouchEnd"
           bindtap="onBannerTap"
         >
-          <image src="{{item.image}}" mode="aspectFill" lazy-load></image>
+          <image wx:if="{{item.image}}" src="{{item.image}}" mode="aspectFill" lazy-load></image>
+          <view wx:else class="banner-placeholder">
+            <text class="banner-placeholder-icon">🖼️</text>
+            <text class="banner-placeholder-text">暂无图片</text>
+          </view>
           <view class="banner-title" wx:if="{{item.title}}">{{item.title}}</view>
           <view class="banner-link-tip" wx:if="{{item.link}}">查看详情 ›</view>
         </view>
       </swiper-item>
     </swiper>
   </view>
+
+  <!-- 商品分类 -->
+  <view class="cate-wrap" wx:if="{{categories.length > 0}}">
+    <view
+      class="cate-item"
+      wx:for="{{categories}}"
+      wx:key="id"
+      data-index="{{index}}"
+      bindtap="onCategoryTap"
+    >
+      <view class="cate-icon">
+        <image wx:if="{{item.icon}}" src="{{item.icon}}" mode="aspectFill" lazy-load />
+        <text wx:else>🏷️</text>
+      </view>
+      <text class="cate-name">{{item.name}}</text>
+    </view>
+  </view>
+  <!-- 分类为空：接口异常或返回空数据 -->
+  <view class="cate-wrap cate-empty" wx:else>
+    <text class="cate-empty-text">暂无数据</text>
+  </view>
+
 
   <!-- 热销商品 -->
   <view class="hot-section">
@@ -76,6 +85,13 @@
         bind:goodstap="onGoodsTap"
       />
     </view>
+
+    <!-- 热销商品为空：接口异常或返回空数据 -->
+    <view class="goods-empty" wx:if="{{hotGoods.length === 0 && !loadingMore}}">
+      <text class="goods-empty-icon">📦</text>
+      <text class="goods-empty-text">暂无数据</text>
+    </view>
+
 
     <!-- 加载中与到底了提示 -->
     <view class="loading-more-bar" wx:if="{{loadingMore}}">
