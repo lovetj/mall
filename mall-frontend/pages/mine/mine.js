@@ -25,6 +25,13 @@ Page(Object.assign({}, modalMixin, {
     // 先同步 TabBar 选中态：即使未登录被拦截，导航签也要保持选中
     this.syncTabBar()
 
+    const app = getApp()
+    if (app && app.globalData.tabRefreshFlags && app.globalData.tabRefreshFlags.mine) {
+      app.globalData.tabRefreshFlags.mine = false
+      this.refreshUserData()
+      return
+    }
+
     const isLogin = auth.isLogin()
     this.setData({ isLogin })
 
@@ -44,6 +51,18 @@ Page(Object.assign({}, modalMixin, {
 
     // 已登录：刷新用户信息（登录成功返回后也会走到这里，保证页面数据为最新）
     this.refreshUser()
+  },
+
+  /** 供全局或登录成功后主动刷新用户数据 */
+  refreshUserData() {
+    const isLogin = auth.isLogin()
+    this.setData({ isLogin })
+    if (isLogin) {
+      this.refreshUser()
+    } else {
+      this.setData({ userInfo: null, cartCount: 0 })
+    }
+    this.syncTabBar()
   },
 
   /** 同步自定义 TabBar 的选中态与购物车角标 */
@@ -154,10 +173,22 @@ Page(Object.assign({}, modalMixin, {
       success: (res) => {
         if (!res.confirm) return
         auth.clearLoginState()
-        getApp().globalData.isLogin = false
-        getApp().globalData.userInfo = null
+        const app = getApp()
+        if (app) {
+          app.globalData.isLogin = false
+          app.globalData.userInfo = null
+          if (typeof app.markTabsNeedRefresh === 'function') {
+            app.markTabsNeedRefresh()
+          }
+        }
+        // 清空本地购物车缓存并通知各页面
+        cart.saveCart([])
+        // 刷新所有已加载的 Tab 页面（首页、分类页、购物车页、我的页）
+        if (app && typeof app.refreshAllTabPages === 'function') {
+          app.refreshAllTabPages()
+        }
         // 停留当前页，刷新为未登录态（头部变登录引导、隐藏退出按钮）
-        this.setData({ isLogin: false, userInfo: null })
+        this.setData({ isLogin: false, userInfo: null, cartCount: 0 })
         util.toast('已退出登录')
         this.syncTabBar()
       }

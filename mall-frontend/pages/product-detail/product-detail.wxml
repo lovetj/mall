@@ -44,8 +44,14 @@
       </swiper>
     </view>
 
+    <!-- 下架状态横幅提示 -->
+    <view class="off-shelf-banner" wx:if="{{product.status === 0}}">
+      <text class="off-shelf-banner-icon">⚠️</text>
+      <text class="off-shelf-banner-text">该商品已下架，暂不支持购买</text>
+    </view>
+
     <!-- 名称、价格、销量、标签 -->
-    <view class="info-card">
+    <view class="info-card {{product.status === 0 ? 'info-card-off-shelf' : ''}}">
       <view class="price-row">
         <view class="price">
           <text class="price-symbol">¥</text>
@@ -60,14 +66,21 @@
 
       <view class="goods-name">{{product.name}}</view>
 
-      <!-- 商品标签：由接口 tagList 渲染，标签前展示标签图片 -->
       <view class="tag-list" wx:if="{{tagList.length > 0}}">
         <view
           class="tag-badge {{item.isHotselling ? 'tag-hot' : ''}}"
           wx:for="{{tagList}}"
           wx:key="id"
         >
-          <image wx:if="{{item.image}}" class="tag-icon" src="{{item.image}}" mode="aspectFit" />
+          <image
+            wx:if="{{item.image && !item.imageError}}"
+            class="tag-icon"
+            src="{{item.image}}"
+            mode="aspectFit"
+            data-index="{{index}}"
+            binderror="onTagImageError"
+            bindload="onTagImageLoad"
+          />
           <text class="tag-name {{item.isHotselling ? 'tag-name-hot' : ''}}">{{item.name}}</text>
         </view>
       </view>
@@ -113,7 +126,12 @@
         <view class="cart-badge" wx:if="{{cartCount > 0}}">{{cartCount}}</view>
       </view>
       <view class="bar-actions">
-        <view class="bar-btn btn-add" bindtap="onAddCart">加入购物车</view>
+        <view
+          class="bar-btn btn-add {{product.status === 0 ? 'btn-disabled' : ''}}"
+          bindtap="onAddCart"
+        >
+          {{product.status === 0 ? '商品已下架' : '加入购物车'}}
+        </view>
       </view>
     </view>
   </block>

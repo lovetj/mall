@@ -3,6 +3,8 @@
  * 全部图标由 CSS 绘制（线条风格），统一 48rpx 视觉尺寸与 2rpx 线宽，
  * 未选中为灰色描边，选中为主题色实心/高亮，风格完全一致。
  */
+const cart = require('../utils/cart')
+
 Component({
   data: {
     selected: 0,
@@ -38,8 +40,8 @@ Component({
   },
 
   attached() {
-    // 全局购物车数量变化时由页面主动调用 setCartCount
     this.syncSelected()
+    this.syncCartCount()
   },
 
   methods: {
@@ -60,9 +62,14 @@ Component({
       if (selected > -1) this.setData({ selected })
     },
 
+    /** 同步购物车数量 */
+    syncCartCount() {
+      this.setData({ cartCount: cart.getCartCount() })
+    },
+
     /** 设置购物车角标数量 */
     setCartCount(count) {
-      this.setData({ cartCount: count || 0 })
+      this.setData({ cartCount: typeof count === 'number' ? count : cart.getCartCount() })
     }
   }
 })

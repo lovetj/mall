@@ -12,11 +12,18 @@ function getCart() {
 
 function saveCart(list) {
   wx.setStorageSync(KEYS.CART, list || [])
-  // 通知其他页面刷新
+  const count = (list || []).reduce((sum, item) => sum + (item.count || 0), 0)
+  // 通知所有页面刷新购物车数据与 TabBar 购物车角标
   try {
-    const pages = getCurrentPages()
+    const pages = getCurrentPages() || []
     pages.forEach((page) => {
-      if (page && typeof page.refreshCart === 'function') page.refreshCart()
+      if (!page) return
+      if (typeof page.refreshCart === 'function') {
+        page.refreshCart()
+      }
+      if (typeof page.getTabBar === 'function' && page.getTabBar()) {
+        page.getTabBar().setCartCount(count)
+      }
     })
   } catch (e) {
     // ignore
@@ -37,6 +44,7 @@ async function syncFromRemote() {
       })
       const merged = remoteList.map((item) => {
         const key = item.id || `${item.productId}_${item.tierId || ''}`
+        const isOffShelf = item.status === 0
         return {
           id: item.id,
           productId: item.productId,
@@ -46,7 +54,8 @@ async function syncFromRemote() {
           price: item.price,
           image: api.formatImageUrl(item.productImage || item.image),
           count: item.quantity || item.count || 1,
-          checked: checkedMap[key] !== undefined ? checkedMap[key] : true
+          checked: isOffShelf ? false : (checkedMap[key] !== undefined ? checkedMap[key] : true),
+          status: item.status !== undefined ? item.status : 1
         }
       })
       saveCart(merged)
@@ -76,8 +85,9 @@ function addToCart(goods, count = 1, tier = null) {
 
   if (index > -1) {
     list[index].count += count
-    list[index].checked = true
+    list[index].checked = goods.status === 0 ? false : true
     list[index].price = price
+    list[index].status = goods.status !== undefined ? goods.status : list[index].status
     if (tierName) list[index].tierName = tierName
   } else {
     list.push({
@@ -89,7 +99,8 @@ function addToCart(goods, count = 1, tier = null) {
       price: price,
       image: image,
       count,
-      checked: true
+      checked: goods.status === 0 ? false : true,
+      status: goods.status !== undefined ? goods.status : 1
     })
   }
   saveCart(list)
@@ -106,27 +117,40 @@ function addToCart(goods, count = 1, tier = null) {
   return list
 }
 
-/** 更新数量（最小 1） */
-function updateCount(id, count, tierId) {
+/** 更新数量（最小 1，接口调用成功后再更新本地数据与状态） */
+async function updateCount(id, count, tierId) {
   const list = getCart()
   const index = list.findIndex((item) => {
     if (item.id === id) return true
     if (tierId) return item.productId === id && item.tierId === tierId
     return item.productId === id
   })
-  if (index > -1) {
-    const targetCount = Math.max(1, count)
-    list[index].count = targetCount
-    saveCart(list)
+  if (index === -1) {
+    return list
+  }
 
-    if (auth.isLogin()) {
-      api.updateCartQuantity({
-        cartId: list[index].id,
-        productId: list[index].productId,
-        tierId: list[index].tierId,
-        quantity: targetCount
-      }).catch(() => {})
-    }
+  const targetItem = list[index]
+  const targetCount = Math.max(1, count)
+
+  if (auth.isLogin()) {
+    await api.updateCartQuantity({
+      cartId: targetItem.id,
+      productId: targetItem.productId,
+      tierId: targetItem.tierId,
+      quantity: targetCount
+    })
+  }
+
+  const latestList = getCart()
+  const latestIndex = latestList.findIndex((item) => {
+    if (item.id === id) return true
+    if (tierId) return item.productId === id && item.tierId === tierId
+    return item.productId === id
+  })
+  if (latestIndex > -1) {
+    latestList[latestIndex].count = targetCount
+    saveCart(latestList)
+    return latestList
   }
   return list
 }
@@ -136,15 +160,24 @@ function toggleChecked(id) {
   const list = getCart()
   const index = list.findIndex((item) => item.id === id || item.productId === id)
   if (index > -1) {
-    list[index].checked = !list[index].checked
+    if (list[index].status === 0) {
+      list[index].checked = false
+    } else {
+      list[index].checked = !list[index].checked
+    }
     saveCart(list)
   }
   return list
 }
 
-/** 全选 / 取消全选 */
+/** 全选 / 取消全选（仅控制未下架有效商品） */
 function toggleAll(checked) {
-  const list = getCart().map((item) => ({ ...item, checked }))
+  const list = getCart().map((item) => {
+    if (item.status === 0) {
+      return { ...item, checked: false }
+    }
+    return { ...item, checked }
+  })
   saveCart(list)
   return list
 }
@@ -158,13 +191,17 @@ function removeGoods(ids) {
   saveCart(remaining)
 
   if (auth.isLogin()) {
-    removed.forEach((item) => {
+    const promises = removed.map((item) => {
       const pId = item.productId || item.id
-      api.deleteCartByProduct(pId).catch(() => {})
+      if (item.id) {
+        return api.deleteCartItem(item.id).catch(() => api.deleteCartByProduct(pId).catch(() => {}))
+      }
+      return api.deleteCartByProduct(pId).catch(() => {})
     })
+    return Promise.all(promises).catch(() => {}).then(() => remaining)
   }
 
-  return remaining
+  return Promise.resolve(remaining)
 }
 
 /** 清空已勾选商品（下单成功后调用） */
@@ -189,13 +226,86 @@ function getCartCount() {
   return getCart().reduce((sum, item) => sum + item.count, 0)
 }
 
-/** 计算勾选商品的总数量与总金额 */
+/** 获取某个商品在购物车中的总数量（支持多规格累加） */
+function getProductCartCount(productId) {
+  if (!productId) return 0
+  const list = getCart()
+  const targetId = String(productId)
+  return list
+    .filter((item) => String(item.productId || '') === targetId || String(item.id || '') === targetId)
+    .reduce((sum, item) => sum + (item.count || 0), 0)
+}
+
+/** 从购物车减少数量（数量为 1 时减至 0 并移除） */
+function decreaseFromCart(goods, tier = null) {
+  const list = getCart()
+  const pId = goods.id || goods.productId
+  const targetId = String(pId)
+  const tierId = tier ? tier.id : (goods.tierId || '')
+
+  const index = list.findIndex((item) => {
+    const itemPid = String(item.productId || item.id || '')
+    if (tierId) {
+      return itemPid === targetId && item.tierId === tierId
+    }
+    return itemPid === targetId
+  })
+
+  if (index > -1) {
+    if (list[index].count > 1) {
+      list[index].count -= 1
+      saveCart(list)
+      if (auth.isLogin()) {
+        api.updateCartQuantity({
+          cartId: list[index].id,
+          productId: list[index].productId,
+          tierId: list[index].tierId,
+          quantity: list[index].count
+        }).catch(() => {})
+      }
+    } else {
+      const deletedItem = list.splice(index, 1)[0]
+      saveCart(list)
+      if (auth.isLogin()) {
+        if (deletedItem && deletedItem.id) {
+          api.deleteCartItem(deletedItem.id).catch(() => {})
+        } else {
+          api.deleteCartByProduct(pId).catch(() => {})
+        }
+      }
+    }
+  }
+  return list
+}
+
+/** 清空所有已下架失效商品 */
+function clearOffShelf() {
+  const list = getCart()
+  const offShelfItems = list.filter((item) => item.status === 0)
+  const remaining = list.filter((item) => item.status !== 0)
+  saveCart(remaining)
+
+  if (auth.isLogin()) {
+    const promises = offShelfItems.map((item) => {
+      const pId = item.productId || item.id
+      if (item.id) {
+        return api.deleteCartItem(item.id).catch(() => api.deleteCartByProduct(pId).catch(() => {}))
+      }
+      return api.deleteCartByProduct(pId).catch(() => {})
+    })
+    return Promise.all(promises).catch(() => {}).then(() => remaining)
+  }
+
+  return Promise.resolve(remaining)
+}
+
+/** 计算勾选商品的总数量与总金额（过滤已下架商品） */
 function calcChecked(list) {
   const source = list || getCart()
   let totalCount = 0
   let totalPrice = 0
   source.forEach((item) => {
-    if (item.checked) {
+    if (item.checked && item.status !== 0) {
       totalCount += item.count
       totalPrice += item.price * item.count
     }
@@ -211,11 +321,14 @@ module.exports = {
   saveCart,
   syncFromRemote,
   addToCart,
+  decreaseFromCart,
   updateCount,
   toggleChecked,
   toggleAll,
   removeGoods,
   removeChecked,
+  clearOffShelf,
   getCartCount,
+  getProductCartCount,
   calcChecked
 }

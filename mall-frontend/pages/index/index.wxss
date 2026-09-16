@@ -1,12 +1,26 @@
 /*首页样式*/
+.index-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
 .header {
   display: flex;
   align-items: center;
   padding: 20rpx 24rpx;
   background: linear-gradient(180deg, #ff5000, #ff7a1a);
-  position: sticky;
-  top: 0;
+  flex-shrink: 0;
   z-index: 10;
+}
+
+.index-scroll {
+  flex: 1;
+  height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .header-title {

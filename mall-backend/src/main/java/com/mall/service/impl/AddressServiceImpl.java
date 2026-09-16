@@ -48,7 +48,7 @@ public class AddressServiceImpl extends ServiceImpl<AddressMapper, Address> impl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void addAddress(String userId, AddressDTO dto) {
+    public Address addAddress(String userId, AddressDTO dto) {
         long count = count(new LambdaQueryWrapper<Address>().eq(Address::getUserId, userId));
 
         Address address = new Address();
@@ -72,11 +72,12 @@ public class AddressServiceImpl extends ServiceImpl<AddressMapper, Address> impl
         }
 
         save(address);
+        return address;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateAddress(String userId, AddressDTO dto) {
+    public Address updateAddress(String userId, AddressDTO dto) {
         if (dto.getId() == null) {
             throw new RuntimeException("地址ID不能为空");
         }
@@ -101,13 +102,14 @@ public class AddressServiceImpl extends ServiceImpl<AddressMapper, Address> impl
         if (dto.getAddressType() != null && !dto.getAddressType().trim().isEmpty()) {
             existing.setAddressType(dto.getAddressType());
         }
-        if (dto.getProvince() != null) existing.setProvince(dto.getProvince());
-        if (dto.getCity() != null) existing.setCity(dto.getCity());
-        if (dto.getDistrict() != null) existing.setDistrict(dto.getDistrict());
-        if (dto.getLatitude() != null) existing.setLatitude(dto.getLatitude());
-        if (dto.getLongitude() != null) existing.setLongitude(dto.getLongitude());
+        existing.setProvince(dto.getProvince());
+        existing.setCity(dto.getCity());
+        existing.setDistrict(dto.getDistrict());
+        existing.setLatitude(dto.getLatitude());
+        existing.setLongitude(dto.getLongitude());
 
         updateById(existing);
+        return existing;
     }
 
     @Override

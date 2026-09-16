@@ -75,16 +75,20 @@ public class CartController {
             return Result.error(401, "用户未登录，请先登录");
         }
 
+        Object cartIdObj = params.get("cartId") != null ? params.get("cartId") : params.get("id");
         Object productIdObj = params.get("productId");
+        Object tierIdObj = params.get("tierId");
         Object quantityObj = params.get("quantity");
-        if (productIdObj == null || quantityObj == null) {
+        if ((cartIdObj == null && productIdObj == null) || quantityObj == null) {
             return Result.error("参数不完整");
         }
 
-        String productId = String.valueOf(productIdObj);
+        String cartId = cartIdObj != null ? String.valueOf(cartIdObj) : null;
+        String productId = productIdObj != null ? String.valueOf(productIdObj) : null;
+        String tierId = tierIdObj != null ? String.valueOf(tierIdObj) : null;
         Integer quantity = Integer.valueOf(quantityObj.toString());
 
-        cartService.updateQuantity(userId, productId, quantity);
+        cartService.updateQuantity(userId, cartId, productId, tierId, quantity);
         return Result.success();
     }
 

@@ -7,6 +7,7 @@ const auth = require('../../utils/auth')
 const util = require('../../utils/util')
 const guard = require('../../utils/guard')
 const api = require('../../utils/api')
+const cart = require('../../utils/cart')
 const { formatImageUrl } = require('../../utils/config')
 
 /** TabBar 页面列表（这些页面只能用 switchTab 跳转） */
@@ -277,11 +278,21 @@ Page({
     if (app) {
       app.globalData.isLogin = true
       app.globalData.userInfo = userInfo
+      if (typeof app.markTabsNeedRefresh === 'function') {
+        app.markTabsNeedRefresh()
+      }
     }
 
     // 重置拦截锁，保证后续拦截正常
     guard.resetRedirectFlag()
     this.setData({ loading: false })
+
+    // 微信登录验证成功后，同步后端购物车并刷新底部导航栏所有页面
+    cart.syncFromRemote().catch(() => {}).finally(() => {
+      if (app && typeof app.refreshAllTabPages === 'function') {
+        app.refreshAllTabPages()
+      }
+    })
 
     wx.showToast({ title: '登录成功', icon: 'success', duration: 800 })
     setTimeout(() => this.backAndRedirect(), 800)

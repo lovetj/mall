@@ -2,6 +2,7 @@
 const auth = require('./utils/auth')
 const guard = require('./utils/guard')
 const config = require('./utils/config')
+const cart = require('./utils/cart')
 
 App({
   globalData: {
@@ -13,6 +14,13 @@ App({
     userInfo: null,
     /** 登录成功后需要回跳的页面（由 guard 统一处理） */
     pendingAction: null,
+    /** TabBar 页面刷新标记：微信登录成功等场景触发所有 Tab 页面全量刷新 */
+    tabRefreshFlags: {
+      index: false,
+      category: false,
+      cart: false,
+      mine: false
+    },
     /** 全局公共常量供页面读取 */
     BASE_URL: config.BASE_URL,
     FILE_BASE_SERVER: config.FILE_BASE_SERVER
@@ -69,5 +77,42 @@ App({
   /** 供页面调用：未登录直接跳登录页 */
   redirectToLogin(options) {
     return guard.redirectToLogin(options)
+  },
+
+  /** 标记所有底部导航栏页面需要刷新 */
+  markTabsNeedRefresh() {
+    this.globalData.tabRefreshFlags = {
+      index: true,
+      category: true,
+      cart: true,
+      mine: true
+    }
+  },
+
+  /**
+   * 刷新当前页面栈中已存在的所有底部导航栏页面及角标
+   */
+  refreshAllTabPages() {
+    try {
+      const cartCount = cart.getCartCount()
+      const pages = getCurrentPages() || []
+      pages.forEach((page) => {
+        if (!page || !page.route) return
+        if (typeof page.getTabBar === 'function' && page.getTabBar()) {
+          page.getTabBar().setCartCount(cartCount)
+        }
+        if (page.route === 'pages/index/index' && typeof page.reloadIndexData === 'function') {
+          page.reloadIndexData()
+        } else if (page.route === 'pages/category/category' && typeof page.reloadCategoryData === 'function') {
+          page.reloadCategoryData()
+        } else if (page.route === 'pages/cart/cart' && typeof page.refreshCartData === 'function') {
+          page.refreshCartData()
+        } else if (page.route === 'pages/mine/mine' && typeof page.refreshUserData === 'function') {
+          page.refreshUserData()
+        }
+      })
+    } catch (e) {
+      console.warn('刷新TabBar页面异常:', e)
+    }
   }
 })

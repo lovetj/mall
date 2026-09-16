@@ -40,15 +40,17 @@ Page(Object.assign({}, modalMixin, {
     return api.getCategoryList().then((res) => {
       const list = res || []
       const categories = [
-        { id: 'all', name: '全部', icon: '', centerOnly: true },
-        { id: 'hot', name: '热销商品', icon: '🔥' },
+        { id: 'all', name: '全部', icon: '', centerOnly: true, isImg: false },
+        { id: 'hot', name: '热销商品', icon: '🔥', isImg: false },
         ...list.map((c) => {
           const icon = formatImageUrl(c.icon)
           return {
             id: c.id,
             name: c.name,
-            icon: icon || '🏷️',
-            isImg: !!icon
+            icon: icon || '',
+            isImg: !!icon,
+            imgLoaded: false,
+            imgFailed: false
           }
         })
       ]
@@ -105,23 +107,20 @@ Page(Object.assign({}, modalMixin, {
   },
 
   /**
-   * 页面级下拉刷新：左侧分类与右侧商品列表一起重新拉取
-   * 仅当手势落在 scroll-view 之外的空白区域时才会命中（页面未滚动状态下）
+   * 兼容页面级下拉刷新事件
    */
   onPullDownRefresh() {
-    this.refreshPageData().then(() => {
-      wx.stopPullDownRefresh()
-    })
+    this.onRefresherRefresh()
+    wx.stopPullDownRefresh()
   },
 
   /**
    * 右侧商品列表 scroll-view 下拉刷新
-   * scroll-view 的滚动区域会拦截下拉手势，页面级 onPullDownRefresh 不会触发，
-   * 因此列表区域用 scroll-view 自带的 refresher 实现，刷新逻辑与页面级共用 refreshPageData
+   * 仅在搜索框下方的商品列表区域产生下拉刷新动画，顶部搜索栏与底部导航条保持固定
    */
   onRefresherRefresh() {
     this.setData({ refresherTriggered: true })
-    this.refreshPageData().then(() => {
+    this.refreshPageData().catch(() => {}).then(() => {
       this.setData({ refresherTriggered: false })
     })
   },
@@ -144,16 +143,24 @@ Page(Object.assign({}, modalMixin, {
         })
         return
       }
+      const prevMap = (this.data.categories || []).reduce((acc, cur) => {
+        acc[cur.id] = cur
+        return acc
+      }, {})
       const categories = [
-        { id: 'all', name: '全部', icon: '', centerOnly: true },
-        { id: 'hot', name: '热销商品', icon: '🔥' },
+        { id: 'all', name: '全部', icon: '', centerOnly: true, isImg: false },
+        { id: 'hot', name: '热销商品', icon: '🔥', isImg: false },
         ...list.map((c) => {
           const icon = formatImageUrl(c.icon)
+          const prev = prevMap[c.id]
+          const sameIcon = prev && prev.icon === icon
           return {
             id: c.id,
             name: c.name,
-            icon: icon || '🏷️',
-            isImg: !!icon
+            icon: icon || '',
+            isImg: !!icon,
+            imgLoaded: sameIcon ? !!prev.imgLoaded : false,
+            imgFailed: sameIcon ? !!prev.imgFailed : false
           }
         })
       ]
@@ -171,6 +178,26 @@ Page(Object.assign({}, modalMixin, {
       }
       this.setData(patch)
     }).catch(() => {})
+  },
+
+  onCategoryIconLoad(e) {
+    const index = e.currentTarget.dataset.index
+    if (typeof index === 'number' && this.data.categories[index]) {
+      this.setData({
+        [`categories[${index}].imgLoaded`]: true,
+        [`categories[${index}].imgFailed`]: false
+      })
+    }
+  },
+
+  onCategoryIconError(e) {
+    const index = e.currentTarget.dataset.index
+    if (typeof index === 'number' && this.data.categories[index]) {
+      this.setData({
+        [`categories[${index}].imgFailed`]: true,
+        [`categories[${index}].imgLoaded`]: false
+      })
+    }
   },
 
   /**
@@ -213,7 +240,8 @@ Page(Object.assign({}, modalMixin, {
         : (Array.isArray(res) ? res : [])
       const formatted = records.map((item) => ({
         ...item,
-        image: formatImageUrl(item.image)
+        image: formatImageUrl(item.image),
+        cartCount: cart.getProductCartCount(item.id)
       }))
       const total = res && typeof res.total === 'number' ? res.total : formatted.length
       const pages = res && typeof res.pages === 'number'
@@ -260,6 +288,15 @@ Page(Object.assign({}, modalMixin, {
     this.syncTabBar()
     // 标记本页已完成首次可见，供 prepareSearch 判断当前时序阶段
     this.__shown = true
+
+    const app = getApp()
+    if (app && app.globalData.tabRefreshFlags && app.globalData.tabRefreshFlags.category) {
+      app.globalData.tabRefreshFlags.category = false
+      this.reloadCategoryData()
+    } else {
+      this.refreshCart()
+    }
+
     // 仅当首页点击搜索框跳转过来（focusOnShow 为 true）时才聚焦搜索框，消费一次后立即复位；
     // 其余任何场景（切 Tab、返回本页、从登录页返回等）都不会聚焦
     if (this.focusOnShow) {
@@ -267,12 +304,18 @@ Page(Object.assign({}, modalMixin, {
       this.focusSearch()
     }
     // 从登录页返回时续做登录前的加购动作
-    const app = getApp()
     const pending = app && app.globalData.pendingAction
     if (pending && pending.type === 'addCart') {
       app.globalData.pendingAction = null
       this.doAddCart(pending.goods)
     }
+  },
+
+  /** 供登录成功或全局刷新分类页数据 */
+  reloadCategoryData() {
+    return this.refreshPageData().then(() => {
+      this.refreshCart()
+    })
   },
 
   /** 同步自定义 TabBar 的选中态与购物车角标 */
@@ -436,7 +479,12 @@ Page(Object.assign({}, modalMixin, {
   },
 
   doAddCart(goods) {
+    if (goods && goods.status === 0) {
+      wx.showToast({ title: '商品已下架', icon: 'none' })
+      return
+    }
     cart.addToCart(goods, 1)
+    this.refreshCart()
     wx.showToast({ title: '已加入购物车', icon: 'success' })
   },
 
@@ -450,8 +498,18 @@ Page(Object.assign({}, modalMixin, {
     }
   },
 
-  /** 供购物车变更时刷新（本页无购物车展示，保留空实现兼容 saveCart 回调） */
-  refreshCart() {},
+  /** 供购物车变更时刷新：同步更新商品列表中的数量数字和 TabBar 角标 */
+  refreshCart() {
+    const list = this.data.goodsList || []
+    if (list.length > 0) {
+      const goodsList = list.map((item) => ({
+        ...item,
+        cartCount: cart.getProductCartCount(item.id)
+      }))
+      this.setData({ goodsList })
+    }
+    this.syncTabBar()
+  },
 
   onGoodsTap(e) {
     const goods = e && e.detail && e.detail.goods
@@ -466,12 +524,29 @@ Page(Object.assign({}, modalMixin, {
     const idx = e.currentTarget.dataset.index
     const goods = this.data.goodsList[idx]
     if (!goods) return
+    if (goods.status === 0) {
+      wx.showToast({ title: '商品已下架', icon: 'none' })
+      return
+    }
     guard.ensureLogin({
       content: '登录后才能加入购物车，是否前往登录？',
       redirect: '/pages/category/category',
       action: { type: 'addCart', goods },
       success: () => this.doAddCart(goods)
     })
+  },
+
+  /** 列表项减购 */
+  onListDecreaseCart(e) {
+    const idx = e.currentTarget.dataset.index
+    const goods = this.data.goodsList[idx]
+    if (!goods) return
+    if (goods.status === 0) {
+      wx.showToast({ title: '商品已下架', icon: 'none' })
+      return
+    }
+    cart.decreaseFromCart(goods)
+    this.refreshCart()
   },
 
   /** 列表项图片加载失败：清空图片地址以回退为「无图片」占位 */

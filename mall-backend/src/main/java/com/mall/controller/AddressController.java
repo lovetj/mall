@@ -69,27 +69,27 @@ public class AddressController {
     }
 
     @PostMapping
-    public Result<Void> add(@Valid @RequestBody AddressDTO dto,
-                            @RequestHeader(value = "Authorization", required = false) String authorization,
-                            @RequestHeader(value = "userId", required = false) String headerUserId) {
-        String userId = resolveUserId(authorization, headerUserId);
-        if (userId == null) {
-            return Result.error(401, "用户未登录，请先登录");
-        }
-        addressService.addAddress(userId, dto);
-        return Result.success();
-    }
-
-    @PutMapping
-    public Result<Void> update(@Valid @RequestBody AddressDTO dto,
+    public Result<Address> add(@Valid @RequestBody AddressDTO dto,
                                @RequestHeader(value = "Authorization", required = false) String authorization,
                                @RequestHeader(value = "userId", required = false) String headerUserId) {
         String userId = resolveUserId(authorization, headerUserId);
         if (userId == null) {
             return Result.error(401, "用户未登录，请先登录");
         }
-        addressService.updateAddress(userId, dto);
-        return Result.success();
+        Address saved = addressService.addAddress(userId, dto);
+        return Result.success(saved);
+    }
+
+    @PutMapping
+    public Result<Address> update(@Valid @RequestBody AddressDTO dto,
+                                  @RequestHeader(value = "Authorization", required = false) String authorization,
+                                  @RequestHeader(value = "userId", required = false) String headerUserId) {
+        String userId = resolveUserId(authorization, headerUserId);
+        if (userId == null) {
+            return Result.error(401, "用户未登录，请先登录");
+        }
+        Address updated = addressService.updateAddress(userId, dto);
+        return Result.success(updated);
     }
 
     @DeleteMapping("/{id}")

@@ -281,6 +281,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         checkUniqueUsername(dto.getUsername(), null);
         User user = new User();
         BeanUtil.copyProperties(dto, user);
+        // 显式将 id 置空，确保由 MyBatis-Plus (ASSIGN_UUID) 统一自动生成 UUID
+        user.setId(null);
         if (StringUtils.hasText(dto.getPassword())) {
             user.setPassword(BCrypt.hashpw(dto.getPassword().trim()));
         } else {

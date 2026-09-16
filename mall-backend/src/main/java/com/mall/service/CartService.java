@@ -15,6 +15,8 @@ public interface CartService extends IService<Cart> {
 
     void updateQuantity(String userId, String productId, Integer quantity);
 
+    void updateQuantity(String userId, String cartId, String productId, String tierId, Integer quantity);
+
     void changeQuantity(String userId, String productId, Integer delta);
 
     void deleteCartItem(String userId, String productId);

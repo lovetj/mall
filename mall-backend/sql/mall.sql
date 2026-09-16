@@ -320,6 +320,6 @@ CREATE TABLE `user` (
   KEY `idx_unionid` (`unionid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户表';
 
-INSERT INTO `user` (`id`, `username`, `password`, `phone`, `avatar`, `nickname`, `status`, `create_time`, `update_time`) VALUES ('1', 'user', '$2a$10$rjet.LriLzGqBZ9StUj0QeBKAnojolx.fgAqVWlhC7KgvRiQSb4z.', '13800138001', NULL, '测试用户', 1, '2026-09-14 20:39:46', '2026-09-15 01:07:54');
+INSERT INTO `user` (`id`, `username`, `password`, `phone`, `avatar`, `nickname`, `status`, `create_time`, `update_time`) VALUES ('c03264663e26467389a9f2425e4c0147', 'user', '$2a$10$rjet.LriLzGqBZ9StUj0QeBKAnojolx.fgAqVWlhC7KgvRiQSb4z.', '13800138001', NULL, '测试用户', 1, '2026-09-14 20:39:46', '2026-09-15 01:07:54');
 
 SET FOREIGN_KEY_CHECKS = 1;

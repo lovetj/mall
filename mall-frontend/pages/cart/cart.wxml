@@ -1,9 +1,12 @@
 <!--购物车页（需登录）-->
 <view class="page-wrap cart-page">
   <!-- 头部操作 -->
-  <view class="cart-header" wx:if="{{cartList.length > 0}}">
-    <text class="cart-count">共 {{cartList.length}} 件商品</text>
-    <text class="edit-btn" bindtap="onToggleEdit">{{editing ? '完成' : '管理'}}</text>
+  <view class="cart-header">
+    <view class="cart-header-left">
+      <text class="cart-title">购物车</text>
+      <text class="cart-count" wx:if="{{cartList.length > 0}}">（共 {{cartList.length}} 件）</text>
+    </view>
+    <text class="edit-btn" wx:if="{{cartList.length > 0}}" bindtap="onToggleEdit">{{editing ? '完成' : '管理'}}</text>
   </view>
 
   <!-- 空状态 -->
@@ -13,37 +16,74 @@
     <view class="btn-primary go-shop" bindtap="goShopping">去逛逛</view>
   </view>
 
-  <!-- 商品列表 -->
-  <view wx:else class="cart-list">
-    <view class="cart-item" wx:for="{{cartList}}" wx:key="id">
-      <view class="checkbox {{item.checked ? 'checked' : ''}}" data-id="{{item.id}}" bindtap="onToggleCheck">
-        <text wx:if="{{item.checked}}">✓</text>
-      </view>
-      <image class="item-img" src="{{item.image}}" mode="aspectFill" lazy-load></image>
-      <view class="item-info">
-        <view class="item-name ellipsis-2">{{item.name}}</view>
-        <view class="item-tier" wx:if="{{item.tierName}}">
-          <text class="tier-tag">{{item.tierName}}</text>
+  <block wx:else>
+    <!-- 有效商品列表 -->
+    <view class="cart-list" wx:if="{{validList.length > 0}}">
+      <view class="cart-item" wx:for="{{validList}}" wx:key="id">
+        <view class="checkbox {{item.checked ? 'checked' : ''}}" data-id="{{item.id}}" bindtap="onToggleCheck">
+          <text wx:if="{{item.checked}}">✓</text>
         </view>
-        <view class="item-bottom">
-          <view class="price">
-            <text class="price-symbol">¥</text>
-            <text class="price-value">{{item.price}}</text>
-            <text class="price-unit" wx:if="{{item.unit}}">/{{item.unit}}</text>
+        <image class="item-img" src="{{item.image}}" mode="aspectFill" lazy-load></image>
+        <view class="item-info">
+          <view class="item-name ellipsis-2">{{item.name}}</view>
+          <view class="item-tier" wx:if="{{item.tierName}}">
+            <text class="tier-tag">{{item.tierName}}</text>
           </view>
-          <view class="stepper">
-            <view class="step-btn" data-id="{{item.id}}" bindtap="onMinus">−</view>
-            <text class="step-num">{{item.count}}</text>
-            <view class="step-btn" data-id="{{item.id}}" bindtap="onPlus">+</view>
+          <view class="item-bottom">
+            <view class="price">
+              <text class="price-symbol">¥</text>
+              <text class="price-value">{{item.price}}</text>
+              <text class="price-unit" wx:if="{{item.unit}}">/{{item.unit}}</text>
+            </view>
+            <view class="stepper">
+              <view class="step-btn" data-id="{{item.id}}" bindtap="onMinus">−</view>
+              <text class="step-num">{{item.count}}</text>
+              <view class="step-btn" data-id="{{item.id}}" bindtap="onPlus">+</view>
+            </view>
           </view>
         </view>
+        <view wx:if="{{editing}}" class="del-btn" data-id="{{item.id}}" bindtap="onDelete">删除</view>
       </view>
-      <view wx:if="{{editing}}" class="del-btn" data-id="{{item.id}}" bindtap="onDelete">删除</view>
     </view>
-  </view>
 
-  <!-- 底部固定结算区 -->
-  <view class="footer" wx:if="{{cartList.length > 0}}">
+    <!-- 下架失效商品独立分区（置于底部区域） -->
+    <view class="off-shelf-section" wx:if="{{offShelfList.length > 0}}">
+      <view class="off-shelf-header">
+        <view class="off-shelf-title">
+          <text class="off-shelf-title-text">失效商品</text>
+          <text class="off-shelf-title-count">({{offShelfList.length}}件)</text>
+        </view>
+        <view class="clear-off-shelf-btn" bindtap="onClearOffShelf">清空失效商品</view>
+      </view>
+
+      <view class="off-shelf-list">
+        <view class="cart-item off-shelf-item" wx:for="{{offShelfList}}" wx:key="id">
+          <view class="off-shelf-badge">失效</view>
+          <view class="off-shelf-img-box">
+            <image class="item-img off-shelf-img" src="{{item.image}}" mode="aspectFill" lazy-load></image>
+            <view class="off-shelf-mask">已下架</view>
+          </view>
+          <view class="item-info">
+            <view class="item-name ellipsis-2 off-shelf-text">{{item.name}}</view>
+            <view class="item-tier" wx:if="{{item.tierName}}">
+              <text class="tier-tag off-shelf-tier-tag">{{item.tierName}}</text>
+            </view>
+            <view class="item-bottom">
+              <view class="off-shelf-tip">商品已下架，暂不支持购买</view>
+              <view class="off-shelf-right">
+                <text class="off-shelf-count">x{{item.count}}</text>
+                <view class="off-shelf-del-text" data-id="{{item.id}}" bindtap="onDelete">删除</view>
+              </view>
+            </view>
+          </view>
+          <view wx:if="{{editing}}" class="del-btn" data-id="{{item.id}}" bindtap="onDelete">删除</view>
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <!-- 底部固定结算区（仅在有有效商品时展示） -->
+  <view class="footer" wx:if="{{validList.length > 0}}">
     <view class="footer-left">
       <view class="checkbox {{allChecked ? 'checked' : ''}}" bindtap="onToggleAll">
         <text wx:if="{{allChecked}}">✓</text>

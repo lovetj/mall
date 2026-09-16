@@ -44,4 +44,14 @@ public class Address implements Serializable {
 
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
+
+    public String getReceiverPhone() {
+        return this.phone;
+    }
+
+    public void setReceiverPhone(String receiverPhone) {
+        if (this.phone == null || this.phone.trim().isEmpty()) {
+            this.phone = receiverPhone;
+        }
+    }
 }

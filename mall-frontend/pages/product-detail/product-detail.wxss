@@ -83,6 +83,35 @@
 }
 
 /* ========== 名称 / 价格 / 销量 / 标签 ========== */
+/* 下架状态横幅提示 */
+.off-shelf-banner {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 28rpx;
+  background: #fff7e6;
+  border-bottom: 1rpx solid #ffd591;
+  color: #d46b08;
+  font-size: 26rpx;
+}
+
+.off-shelf-banner-icon {
+  font-size: 30rpx;
+  margin-right: 12rpx;
+  line-height: 1;
+}
+
+.off-shelf-banner-text {
+  font-weight: 500;
+}
+
+.info-card.info-card-off-shelf {
+  background: #fafafa;
+}
+
+.info-card.info-card-off-shelf .price {
+  color: #8c8c8c;
+}
+
 .info-card {
   background: #fff;
   padding: 24rpx;
@@ -246,6 +275,12 @@
   font-weight: 600;
   line-height: 1.45;
   color: var(--text-main);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-all;
 }
 
 /* 标签：标签名前面展示标签图片 */
@@ -387,6 +422,13 @@
 .btn-add {
   background: linear-gradient(135deg, #ff8a3d, #ff5000);
   border-radius: 40rpx;
+}
+
+.btn-add.btn-disabled {
+  background: #bfbfbf !important;
+  color: #ffffff !important;
+  cursor: not-allowed;
+  opacity: 0.9;
 }
 
 

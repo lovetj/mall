@@ -14,9 +14,9 @@ public interface AddressService extends IService<Address> {
 
     Address getDefaultAddress(String userId);
 
-    void addAddress(String userId, AddressDTO dto);
+    Address addAddress(String userId, AddressDTO dto);
 
-    void updateAddress(String userId, AddressDTO dto);
+    Address updateAddress(String userId, AddressDTO dto);
 
     void deleteAddress(String userId, String id);
 

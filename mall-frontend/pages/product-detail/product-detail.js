@@ -36,6 +36,7 @@ Page(Object.assign({}, modalMixin, {
     const productId = (options && options.id) || ''
     this.setData({ productId })
     if (!productId) {
+      this.clearTagImageTimers()
       this.setData({ loadState: 'empty' })
       return
     }
@@ -46,11 +47,16 @@ Page(Object.assign({}, modalMixin, {
     this.refreshCart()
   },
 
+  onUnload() {
+    this.clearTagImageTimers()
+  },
+
   /** 加载商品详情 */
   loadDetail(id) {
     this.setData({ loadState: 'loading' })
     return api.getProductDetail(id).then((data) => {
       if (!data || !data.id) {
+        this.clearTagImageTimers()
         this.setData({ product: null, loadState: 'empty' })
         return
       }
@@ -63,11 +69,12 @@ Page(Object.assign({}, modalMixin, {
       const unitVal = defaultTier && defaultTier.unit ? defaultTier.unit : data.unit
       const stockVal = defaultTier && defaultTier.stock !== undefined ? defaultTier.stock : data.stock
       const imgVal = (defaultTier && defaultTier.image) || (swiperImages.length ? swiperImages[0] : '')
+      const tagList = this.buildTags(data.tagList)
 
       this.setData({
         product: data,
         swiperImages,
-        tagList: this.buildTags(data.tagList),
+        tagList,
         tierList,
         selectedTier: defaultTier,
         selectedTierId,
@@ -79,8 +86,10 @@ Page(Object.assign({}, modalMixin, {
         salesText: util.formatSales(data.sales),
         loadState: 'success'
       })
+      this.startTagImageTimeouts(tagList)
     }).catch(() => {
       // 接口异常 / 超时 / 无数据：展示空态，不降级本地假数据
+      this.clearTagImageTimers()
       this.setData({ product: null, swiperImages: [], tagList: [], tierList: [], loadState: 'empty' })
     })
   },
@@ -164,17 +173,70 @@ Page(Object.assign({}, modalMixin, {
     return raw.map((p) => formatImageUrl(p)).filter(Boolean)
   },
 
-  /** 组装标签列表（图片统一格式化） */
   buildTags(list) {
     if (!Array.isArray(list)) return []
     return list
       .filter((t) => t && typeof t.name === 'string' && t.name.trim() !== '')
-      .map((t) => ({
-        id: t.id,
-        name: t.name,
-        image: formatImageUrl(t.image),
-        isHotselling: t.isHotselling === 1
-      }))
+      .map((t) => {
+        const formattedImg = formatImageUrl(t.image)
+        const validImg = typeof formattedImg === 'string' ? formattedImg.trim() : ''
+        return {
+          id: t.id,
+          name: t.name,
+          image: validImg,
+          isHotselling: t.isHotselling === 1,
+          imageError: false
+        }
+      })
+  },
+
+  clearTagImageTimers() {
+    if (this._tagImageTimers) {
+      Object.keys(this._tagImageTimers).forEach((key) => {
+        clearTimeout(this._tagImageTimers[key])
+      })
+      this._tagImageTimers = {}
+    }
+  },
+
+  startTagImageTimeouts(tags) {
+    this.clearTagImageTimers()
+    this._tagImageTimers = {}
+    if (!Array.isArray(tags)) return
+    tags.forEach((item, index) => {
+      if (item.image && !item.imageError) {
+        this._tagImageTimers[index] = setTimeout(() => {
+          this.handleTagImageFailed(index)
+        }, 5000)
+      }
+    })
+  },
+
+  onTagImageLoad(e) {
+    const index = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.index
+    if (index !== undefined && index !== null && this._tagImageTimers && this._tagImageTimers[index]) {
+      clearTimeout(this._tagImageTimers[index])
+      delete this._tagImageTimers[index]
+    }
+  },
+
+  onTagImageError(e) {
+    const index = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.index
+    this.handleTagImageFailed(index)
+  },
+
+  handleTagImageFailed(index) {
+    if (index === undefined || index === null) return
+    if (this._tagImageTimers && this._tagImageTimers[index]) {
+      clearTimeout(this._tagImageTimers[index])
+      delete this._tagImageTimers[index]
+    }
+    if (this.data.tagList && this.data.tagList[index] && !this.data.tagList[index].imageError) {
+      const key = `tagList[${index}].imageError`
+      this.setData({
+        [key]: true
+      })
+    }
   },
 
   /** 刷新购物车角标 */
@@ -210,6 +272,10 @@ Page(Object.assign({}, modalMixin, {
   onAddCart() {
     const product = this.data.product
     if (!product) return
+    if (product.status === 0) {
+      util.toast('该商品已下架，暂不支持购买')
+      return
+    }
     guard.ensureLogin({
       content: '登录后才能加入购物车，是否前往登录？',
       action: { type: 'addCart', goods: product },

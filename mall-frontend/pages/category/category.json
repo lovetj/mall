@@ -4,6 +4,6 @@
     "login-modal": "/components/login-modal/login-modal"
   },
   "navigationBarTitleText": "商品分类",
-  "enablePullDownRefresh": true,
+  "enablePullDownRefresh": false,
   "backgroundTextStyle": "dark"
 }

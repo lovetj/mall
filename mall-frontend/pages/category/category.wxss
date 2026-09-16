@@ -66,6 +66,26 @@
   background: #fff;
 }
 
+.side-item .side-icon-img.loading {
+  position: absolute;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.side-item .side-icon-img.loaded {
+  position: static;
+  width: 36rpx;
+  height: 36rpx;
+  margin-right: 6rpx;
+  opacity: 1;
+  visibility: visible;
+}
+
 .side-item .side-name {
   font-size: 24rpx;
   line-height: 32rpx;
@@ -140,19 +160,63 @@
   border: 2rpx solid #f2f3f5;
 }
 
+/* 下架商品行置灰 */
+.list-goods.list-goods-off-shelf {
+  background: #f7f7f7;
+  border-color: #ebebeb;
+  filter: grayscale(100%);
+  opacity: 0.85;
+}
+
 /* 按下反馈：仅做轻微变暗，避免夸张 */
 .list-goods.card-hover {
   background: #f4f5f7;
   opacity: 1;
 }
 
-.list-goods-img {
+.list-goods-img-wrap {
+  position: relative;
   width: 180rpx;
   height: 180rpx;
   border-radius: 16rpx;
   flex-shrink: 0;
+  overflow: hidden;
+  background: #fff;
+}
+
+.list-goods-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 16rpx;
+  flex-shrink: 0;
   background: #fff;
   overflow: hidden;
+}
+
+/* 图片底部 2/5 处提示已下架 */
+.off-shelf-img-mask {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 40%;
+  background: rgba(0, 0, 0, 0.65);
+  color: #ffffff;
+  font-size: 22rpx;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 2rpx;
+}
+
+.off-shelf-tag {
+  font-size: 22rpx;
+  color: #999999;
+  background: #ebebeb;
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+  line-height: 1.4;
 }
 
 /* 无图片占位：保持图片区域尺寸，居中展示提示 */
@@ -214,6 +278,49 @@
   justify-content: space-between;
   margin-top: auto;
   padding-top: 12rpx;
+}
+
+/* 购物车步进器与数量显示 */
+.stepper-wrap {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.stepper-btn {
+  width: 48rpx;
+  height: 48rpx;
+  line-height: 44rpx;
+  text-align: center;
+  border-radius: 50%;
+  font-size: 32rpx;
+  font-weight: 500;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stepper-minus {
+  background: #ffffff;
+  color: #ff5000;
+  border: 2rpx solid #ff5000;
+  line-height: 1;
+}
+
+.stepper-plus {
+  background: linear-gradient(135deg, #ff8a3d, #ff5000);
+  color: #ffffff;
+  line-height: 1;
+}
+
+.stepper-num {
+  min-width: 44rpx;
+  text-align: center;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #333333;
+  padding: 0 6rpx;
 }
 
 /* 底部加载更多与到底了（与首页保持一致） */

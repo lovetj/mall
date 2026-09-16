@@ -21,6 +21,8 @@ public class AddressDTO {
     @Pattern(regexp = "^1[3-9]\\d{9}$", message = "手机号码格式不正确")
     private String phone;
 
+    private String receiverPhone;
+
     @NotBlank(message = "详细地址不能为空")
     private String detailAddress;
 
@@ -39,4 +41,25 @@ public class AddressDTO {
     private BigDecimal longitude;
 
     private Integer isDefault;
+
+    public String getPhone() {
+        if (phone != null && !phone.trim().isEmpty()) {
+            return phone;
+        }
+        return receiverPhone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+        if (this.receiverPhone == null || this.receiverPhone.trim().isEmpty()) {
+            this.receiverPhone = phone;
+        }
+    }
+
+    public void setReceiverPhone(String receiverPhone) {
+        this.receiverPhone = receiverPhone;
+        if (this.phone == null || this.phone.trim().isEmpty()) {
+            this.phone = receiverPhone;
+        }
+    }
 }

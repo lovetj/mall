@@ -30,13 +30,16 @@
         bindtap="onSelectCategory"
       >
         <image
-          wx:if="{{item.isImg}}"
-          class="side-icon-img"
+          wx:if="{{item.isImg && !item.imgFailed}}"
+          class="side-icon-img {{item.imgLoaded ? 'loaded' : 'loading'}}"
           src="{{item.icon}}"
           mode="aspectFill"
           lazy-load
+          bindload="onCategoryIconLoad"
+          binderror="onCategoryIconError"
+          data-index="{{index}}"
         />
-        <text wx:elif="{{item.icon}}" class="side-icon">{{item.icon}}</text>
+        <text wx:elif="{{item.icon && !item.isImg}}" class="side-icon">{{item.icon}}</text>
         <text class="side-name">{{item.name}}</text>
       </view>
     </scroll-view>
@@ -48,9 +51,12 @@
       bindscrolltolower="onLoadMore"
       lower-threshold="80"
       refresher-enabled="{{true}}"
-      refresher-triggered="{{refresherTriggered}}"
+      refresher-threshold="{{80}}"
       refresher-default-style="black"
+      refresher-background="#ffffff"
+      refresher-triggered="{{refresherTriggered}}"
       bindrefresherrefresh="onRefresherRefresh"
+      enable-back-to-top
     >
       <view wx:if="{{goodsList.length === 0}}" class="empty empty-center">
         <text class="empty-icon">📦</text>
@@ -59,26 +65,29 @@
 
       <view class="goods-list" wx:else>
         <view
-          class="list-goods"
+          class="list-goods {{item.status === 0 ? 'list-goods-off-shelf' : ''}}"
           wx:for="{{goodsList}}"
           wx:key="id"
           data-index="{{index}}"
           bindtap="onListItemTap"
-          hover-class="card-hover"
+          hover-class="{{item.status === 0 ? '' : 'card-hover'}}"
           hover-stay-time="60"
         >
-          <image
-            wx:if="{{item.image}}"
-            class="list-goods-img"
-            src="{{item.image}}"
-            mode="aspectFill"
-            lazy-load
-            binderror="onListImageError"
-            data-index="{{index}}"
-          />
-          <view wx:else class="list-goods-img list-goods-img-empty">
-            <text class="list-goods-img-icon">🖼️</text>
-            <text class="list-goods-img-text">无图片</text>
+          <view class="list-goods-img-wrap">
+            <image
+              wx:if="{{item.image}}"
+              class="list-goods-img"
+              src="{{item.image}}"
+              mode="aspectFill"
+              lazy-load
+              binderror="onListImageError"
+              data-index="{{index}}"
+            />
+            <view wx:else class="list-goods-img list-goods-img-empty">
+              <text class="list-goods-img-icon">🖼️</text>
+              <text class="list-goods-img-text">无图片</text>
+            </view>
+            <view class="off-shelf-img-mask" wx:if="{{item.status === 0}}">已下架</view>
           </view>
           <view class="list-goods-info">
             <view class="list-goods-name">{{item.name}}</view>
@@ -89,7 +98,15 @@
                 <text class="price-value">{{item.price}}</text>
                 <text class="price-unit" wx:if="{{item.unit}}">/{{item.unit}}</text>
               </view>
-              <view class="add-cart-btn" catchtap="onListAddCart" data-index="{{index}}">+</view>
+              <view class="off-shelf-tag" wx:if="{{item.status === 0}}">已下架</view>
+              <block wx:else>
+                <view class="stepper-wrap" wx:if="{{item.cartCount > 0}}">
+                  <view class="stepper-btn stepper-minus" catchtap="onListDecreaseCart" data-index="{{index}}">-</view>
+                  <text class="stepper-num">{{item.cartCount}}</text>
+                  <view class="stepper-btn stepper-plus" catchtap="onListAddCart" data-index="{{index}}">+</view>
+                </view>
+                <view wx:else class="add-cart-btn" catchtap="onListAddCart" data-index="{{index}}">+</view>
+              </block>
             </view>
           </view>
         </view>

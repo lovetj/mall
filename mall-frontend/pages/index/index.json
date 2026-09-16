@@ -4,7 +4,7 @@
     "login-modal": "/components/login-modal/login-modal"
   },
   "navigationBarTitleText": "优选商城",
-  "enablePullDownRefresh": true,
+  "enablePullDownRefresh": false,
   "backgroundTextStyle": "dark",
   "onReachBottomDistance": 60
 }

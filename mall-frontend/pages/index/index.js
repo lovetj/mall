@@ -19,7 +19,9 @@ Page(Object.assign({}, modalMixin, {
     total: 0,
     hasMore: true,
     loadingMore: false,
-    noMore: false
+    noMore: false,
+    // 搜索框下方 scroll-view 下拉刷新状态
+    refresherTriggered: false
   },
 
   onLoad() {
@@ -28,15 +30,22 @@ Page(Object.assign({}, modalMixin, {
     this.loadHotGoods(true)
   },
 
-  /** 下拉刷新：重新加载轮播图、分类、热销商品 */
-  onPullDownRefresh() {
+  /** 搜索框下方内容区域下拉刷新：重新加载轮播图、分类、热销商品 */
+  onRefresherRefresh() {
+    this.setData({ refresherTriggered: true })
     Promise.all([
       this.loadBanners(),
       this.loadCategories(),
       this.loadHotGoods(true)
     ]).catch(() => {}).then(() => {
-      wx.stopPullDownRefresh()
+      this.setData({ refresherTriggered: false })
     })
+  },
+
+  /** 兼容页面级下拉刷新事件（如通过快捷键或API触发） */
+  onPullDownRefresh() {
+    this.onRefresherRefresh()
+    wx.stopPullDownRefresh()
   },
 
   /**
@@ -44,7 +53,7 @@ Page(Object.assign({}, modalMixin, {
    * 接口失败 / 返回空数组 / 有效图片为空时，降级为 3 条无图片的占位轮播
    */
   loadBanners() {
-    api.getBannerList().then((res) => {
+    return api.getBannerList().then((res) => {
       const list = Array.isArray(res) ? res : []
       const banners = list.map((item) => ({
         ...item,
@@ -307,11 +316,24 @@ Page(Object.assign({}, modalMixin, {
     this.loadMoreHotGoods()
   },
 
-  onShow() {
+  /** 重新加载首页所有数据（供登录后或全局刷新调用） */
+  reloadIndexData() {
+    this.loadBanners()
+    this.loadCategories()
+    this.loadHotGoods(true)
     this.refreshCart()
+  },
+
+  onShow() {
+    const app = getApp()
+    if (app && app.globalData && app.globalData.tabRefreshFlags && app.globalData.tabRefreshFlags.index) {
+      app.globalData.tabRefreshFlags.index = false
+      this.reloadIndexData()
+    } else {
+      this.refreshCart()
+    }
     this.syncTabBar()
     // 从登录页 switchTab 回来时，续做登录前的加购动作
-    const app = getApp()
     const pending = app && app.globalData.pendingAction
     if (pending && pending.type === 'addCart') {
       app.globalData.pendingAction = null

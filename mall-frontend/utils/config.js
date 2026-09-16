@@ -4,8 +4,8 @@
  */
 
 // 后端 API 根地址
-// const BASE_URL = 'https://2uu4401930iw.vicp.fun/api'
-const BASE_URL = 'http://127.0.0.1:8080/api'
+const BASE_URL = 'https://2uu4401930iw.vicp.fun/api'
+// const BASE_URL = 'http://127.0.0.1:8080/api'
 
 // 文件服务器地址（前端直接配置，用于图片展示等）
 // const FILE_BASE_SERVER = 'https://tianjiabaobao.picp.vip/sunny_file'
