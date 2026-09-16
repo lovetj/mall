@@ -1,8 +1,15 @@
 /**
- * 订单本地数据管理（用于"我的订单"展示）
+ * 订单数据管理（纯内存维护，业务均已走后端 API）
  * 结构：{ id, createTime, status, statusText, goods: [], totalPrice, totalCount }
  */
 const { KEYS } = require('./keys')
+
+// 纯内存维护
+let memoryOrders = []
+
+try {
+  wx.removeStorageSync(KEYS.ORDERS)
+} catch (e) {}
 
 /** 订单状态字典 */
 const ORDER_STATUS = {
@@ -13,11 +20,11 @@ const ORDER_STATUS = {
 }
 
 function getOrders() {
-  return wx.getStorageSync(KEYS.ORDERS) || []
+  return memoryOrders
 }
 
 function saveOrders(list) {
-  wx.setStorageSync(KEYS.ORDERS, list || [])
+  memoryOrders = list || []
 }
 
 /** 生成订单号 */

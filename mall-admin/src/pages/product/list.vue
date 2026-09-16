@@ -19,6 +19,14 @@
             </view>
           </picker>
         </view>
+        <view class="del-picker-wrap">
+          <picker :value="delIndex" :range="delOptions" range-key="label" @change="onDelChange">
+            <view class="del-picker">
+              <text class="picker-text">{{ delOptions[delIndex]?.label || '全部商品' }}</text>
+              <text class="picker-arrow">▼</text>
+            </view>
+          </picker>
+        </view>
         <input class="search-input" v-model="keyword" placeholder="搜索商品名称" @input="onSearchInput" />
         <view class="add-btn" @click="handleAdd">添加商品</view>
       </view>
@@ -62,8 +70,8 @@
       </view>
 
       <view class="product-list" v-if="productList.length > 0">
-        <view class="product-item" v-for="item in productList" :key="item.id" @click="toggleSelect(item.id)">
-          <view class="checkbox" :class="{ checked: isSelected(item.id) }" @click.stop="toggleSelect(item.id)">
+        <view class="product-item" v-for="item in productList" :key="item.id" @click="onItemClick(item)">
+          <view class="checkbox" v-if="item.isDel !== 1" :class="{ checked: isSelected(item.id) }" @click.stop="toggleSelect(item.id)">
             <text class="checkbox-icon" v-if="isSelected(item.id)">✓</text>
           </view>
           <image
@@ -75,7 +83,8 @@
           <view class="product-info">
             <view class="product-title-row">
               <text class="product-name">{{ item.name }}</text>
-              <text class="product-status" :class="{ 'status-off': item.status === 0 }">
+              <text v-if="item.isDel === 1" class="product-status status-del">已删除</text>
+              <text v-else class="product-status" :class="{ 'status-off': item.status === 0 }">
                 {{ item.status === 1 ? '上架' : '下架' }}
               </text>
             </view>
@@ -84,11 +93,14 @@
               <text class="product-price">¥{{ item.price }} 起/{{ item.unit }}</text>
             </view>
           </view>
-          <view class="product-actions" @click.stop>
+          <view class="product-actions" @click.stop v-if="item.isDel !== 1">
             <view class="action-btn edit" @click="handleEdit(item)">编辑</view>
             <view class="action-btn delete" @click="handleDelete(item.id)">删除</view>
             <view class="action-btn status-btn online" v-if="item.status === 0" @click="handleToggleStatus(item, 1)">上架</view>
             <view class="action-btn status-btn offline" v-if="item.status === 1" @click="handleToggleStatus(item, 0)">下架</view>
+          </view>
+          <view class="product-actions" @click.stop v-else>
+            <view class="action-btn view" @click="handleView(item)">查看</view>
           </view>
         </view>
       </view>
@@ -137,6 +149,13 @@ export default {
       ],
       statusIndex: 0,
       selectedStatus: null,
+      delOptions: [
+        { value: null, label: '全部商品' },
+        { value: 0, label: '未删除' },
+        { value: 1, label: '已删除' }
+      ],
+      delIndex: 0,
+      selectedDel: null,
       batchActions: [
         { key: 'online', label: '批量上架' },
         { key: 'offline', label: '批量下架' },
@@ -161,7 +180,8 @@ export default {
   },
   computed: {
     isAllSelected() {
-      return this.productList.length > 0 && this.productList.every(item => this.selectedIds.includes(item.id))
+      const selectableList = this.productList.filter(item => item.isDel !== 1)
+      return selectableList.length > 0 && selectableList.every(item => this.selectedIds.includes(item.id))
     }
   },
   async onLoad() {
@@ -250,6 +270,13 @@ export default {
       this.pageNum = 1
       this.loadProducts()
     },
+    onDelChange(e) {
+      const idx = Number(e.detail.value)
+      this.delIndex = idx
+      this.selectedDel = this.delOptions[idx]?.value ?? null
+      this.pageNum = 1
+      this.loadProducts()
+    },
     onPageSizeChange(e) {
       const idx = Number(e.detail.value)
       this.pageSizeIndex = idx
@@ -273,6 +300,9 @@ export default {
         if (this.selectedStatus !== null && this.selectedStatus !== undefined) {
           params.status = this.selectedStatus
         }
+        if (this.selectedDel !== null && this.selectedDel !== undefined) {
+          params.isDel = this.selectedDel
+        }
 
         const data = await api.getProductPage(params)
         this.productList = data?.records || []
@@ -283,6 +313,18 @@ export default {
       } finally {
         this.loading = false
       }
+    },
+    onItemClick(item) {
+      if (item.isDel === 1) {
+        this.handleView(item)
+      } else {
+        this.toggleSelect(item.id)
+      }
+    },
+    handleView(item) {
+      uni.navigateTo({
+        url: `/pages/product/edit?id=${item.id}&readonly=1`
+      })
     },
     isSelected(id) {
       return this.selectedIds.includes(id)
@@ -296,11 +338,12 @@ export default {
       }
     },
     toggleSelectAll() {
+      const currentIds = this.productList
+        .filter(item => item.isDel !== 1)
+        .map(item => item.id)
       if (this.isAllSelected) {
-        const currentIds = this.productList.map(item => item.id)
         this.selectedIds = this.selectedIds.filter(id => !currentIds.includes(id))
       } else {
-        const currentIds = this.productList.map(item => item.id)
         this.selectedIds = Array.from(new Set([...this.selectedIds, ...currentIds]))
       }
     },
@@ -443,7 +486,7 @@ export default {
 }
 
 .header-section {
-  padding: 20rpx 20rpx 0 20rpx;
+  padding: 16rpx 12rpx 0 12rpx;
   flex-shrink: 0;
   box-sizing: border-box;
 }
@@ -451,24 +494,26 @@ export default {
 .search-bar {
   display: flex;
   align-items: center;
-  margin-bottom: 20rpx;
+  margin-bottom: 16rpx;
 }
 
 .category-picker-wrap,
-.status-picker-wrap {
-  margin-right: 16rpx;
+.status-picker-wrap,
+.del-picker-wrap {
+  margin-right: 8rpx;
   flex-shrink: 0;
 }
 
 .category-picker,
-.status-picker {
-  height: 72rpx;
-  line-height: 72rpx;
-  padding: 0 16rpx;
+.status-picker,
+.del-picker {
+  height: 64rpx;
+  line-height: 64rpx;
+  padding: 0 12rpx;
   background: #fff;
   border: 1rpx solid #ddd;
   border-radius: 8rpx;
-  font-size: 26rpx;
+  font-size: 24rpx;
   color: #333;
   display: flex;
   align-items: center;
@@ -477,7 +522,7 @@ export default {
 }
 
 .picker-text {
-  max-width: 140rpx;
+  max-width: 96rpx;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -486,29 +531,29 @@ export default {
 .picker-arrow {
   font-size: 18rpx;
   color: #999;
-  margin-left: 8rpx;
+  margin-left: 6rpx;
   transform: scale(0.8);
 }
 
 .search-input {
   flex: 1;
   min-width: 0;
-  height: 72rpx;
-  padding: 0 20rpx;
+  height: 64rpx;
+  padding: 0 16rpx;
   border: 1rpx solid #ddd;
   border-radius: 8rpx;
-  font-size: 28rpx;
+  font-size: 26rpx;
   background: #fff;
   box-sizing: border-box;
 }
 
 .add-btn {
-  padding: 0 24rpx;
-  height: 72rpx;
-  line-height: 72rpx;
-  margin-left: 16rpx;
+  padding: 0 16rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  margin-left: 8rpx;
   border-radius: 8rpx;
-  font-size: 28rpx;
+  font-size: 26rpx;
   background: #1890ff;
   color: #fff;
   white-space: nowrap;
@@ -721,6 +766,12 @@ export default {
   border-color: #d9d9d9;
 }
 
+.product-status.status-del {
+  background: #fff1f0;
+  color: #ff4d4f;
+  border-color: #ffa39e;
+}
+
 .product-category {
   font-size: 24rpx;
   color: #999;
@@ -778,6 +829,12 @@ export default {
   background: #fff7e6;
   color: #fa8c16;
   border: 1rpx solid #ffd591;
+}
+
+.action-btn.view {
+  background: #f5f5f5;
+  color: #999;
+  border: 1rpx solid #d9d9d9;
 }
 
 .empty-wrap {

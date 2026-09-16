@@ -138,6 +138,9 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
         if (product == null) {
             throw new RuntimeException("商品不存在");
         }
+        if (product.getIsDel() != null && product.getIsDel() == 1) {
+            throw new RuntimeException("商品已删除");
+        }
         if (product.getStatus() != null && product.getStatus() != 1) {
             throw new RuntimeException("商品已下架");
         }

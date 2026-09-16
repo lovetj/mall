@@ -25,6 +25,11 @@ Page(Object.assign({}, modalMixin, {
   },
 
   onLoad() {
+    if (cart && typeof cart.syncFromRemote === 'function') {
+      cart.syncFromRemote().catch(() => {}).then(() => {
+        this.refreshCart()
+      })
+    }
     this.loadBanners()
     this.loadCategories()
     this.loadHotGoods(true)
@@ -318,6 +323,11 @@ Page(Object.assign({}, modalMixin, {
 
   /** 重新加载首页所有数据（供登录后或全局刷新调用） */
   reloadIndexData() {
+    if (cart && typeof cart.syncFromRemote === 'function') {
+      cart.syncFromRemote().catch(() => {}).then(() => {
+        this.refreshCart()
+      })
+    }
     this.loadBanners()
     this.loadCategories()
     this.loadHotGoods(true)
@@ -326,12 +336,11 @@ Page(Object.assign({}, modalMixin, {
 
   onShow() {
     const app = getApp()
-    if (app && app.globalData && app.globalData.tabRefreshFlags && app.globalData.tabRefreshFlags.index) {
+    if (app && app.globalData.tabRefreshFlags && app.globalData.tabRefreshFlags.index) {
       app.globalData.tabRefreshFlags.index = false
-      this.reloadIndexData()
-    } else {
-      this.refreshCart()
     }
+    // 每次切回首页都重新加载全部数据，保证页面渲染最新
+    this.reloadIndexData()
     this.syncTabBar()
     // 从登录页 switchTab 回来时，续做登录前的加购动作
     const pending = app && app.globalData.pendingAction
@@ -374,10 +383,20 @@ Page(Object.assign({}, modalMixin, {
   },
 
   /** 执行加购（登录后 / 已登录时调用） */
-  doAddCart(goods) {
-    cart.addToCart(goods, 1)
-    this.refreshCart()
-    wx.showToast({ title: '已加入购物车', icon: 'success' })
+  async doAddCart(goods) {
+    try {
+      const { ok, message } = await cart.checkBuyable(goods)
+      if (!ok) {
+        wx.showToast({ title: message, icon: 'none' })
+        this.reloadIndexData()
+        return
+      }
+      await cart.addToCart(goods, 1)
+      this.refreshCart()
+      wx.showToast({ title: '已加入购物车', icon: 'success' })
+    } catch (err) {
+      // 加购失败保持原样
+    }
   },
 
   /** 登录页回跳时由 login 页调用（跨页回调），自动续做加购 */

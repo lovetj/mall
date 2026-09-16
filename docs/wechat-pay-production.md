@@ -594,9 +594,8 @@ mall-backend/src/main/resources/
 文件位置：[pay.vue](../mall-frontend/src/pages/pay.vue)
 
 已实现：
-- ✅ 支付方式选择（微信/支付宝/货到付款）
+- ✅ 支付方式选择（微信/支付宝）
 - ✅ Mock 模式检测 + 模拟支付成功
-- ✅ 货到付款自动标记成功
 - ✅ 轮询支付状态（真实模式兜底）
 - ✅ 平台自动检测（APP / 小程序 / H5微信内 / H5外部 / PC扫码）
 

@@ -42,6 +42,8 @@ public class Product implements Serializable {
 
     private Integer sort;
 
+    private Integer isDel;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 

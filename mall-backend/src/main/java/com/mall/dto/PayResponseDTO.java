@@ -27,7 +27,7 @@ public class PayResponseDTO {
     private BigDecimal payAmount;
 
     /**
-     * 支付方式 1微信 2支付宝 3货到付款 99Mock
+     * 支付方式 1微信 2支付宝 99Mock
      * 用于前端展示支付中状态的图标
      */
     private Integer payType;

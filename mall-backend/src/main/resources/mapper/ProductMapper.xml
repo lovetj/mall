@@ -17,6 +17,7 @@
         <result property="sales" column="sales"/>
         <result property="status" column="status"/>
         <result property="sort" column="sort"/>
+        <result property="isDel" column="is_del"/>
         <result property="createTime" column="create_time"/>
         <result property="updateTime" column="update_time"/>
         <result property="categoryName" column="category_name"/>
@@ -36,8 +37,11 @@
             <if test="status != null">
                 AND p.status = #{status}
             </if>
+            <if test="isDel != null">
+                AND p.is_del = #{isDel}
+            </if>
         </where>
-        ORDER BY p.status DESC, p.sort ASC, p.create_time DESC
+        ORDER BY p.is_del ASC, p.status DESC, p.sort ASC, p.create_time DESC
     </select>
 
 </mapper>

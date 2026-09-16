@@ -3,6 +3,5 @@
     "login-modal": "/components/login-modal/login-modal"
   },
   "navigationBarTitleText": "购物车",
-  "enablePullDownRefresh": true,
   "backgroundTextStyle": "dark"
 }

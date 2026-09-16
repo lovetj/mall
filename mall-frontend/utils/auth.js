@@ -34,20 +34,26 @@ function clearLoginState() {
   wx.removeStorageSync(KEYS.LOGIN_TIME)
 }
 
-/** 保存登录成功后需要回跳的页面 */
+let memoryRedirectUrl = ''
+
+try {
+  wx.removeStorageSync(KEYS.REDIRECT)
+} catch (e) {}
+
+/** 保存登录成功后需要回跳的页面（纯内存变量） */
 function setRedirect(url) {
-  wx.setStorageSync(KEYS.REDIRECT, url || '')
+  memoryRedirectUrl = url || ''
 }
 
 /** 读取回跳地址（不清除），用于登录页展示 */
 function peekRedirect() {
-  return wx.getStorageSync(KEYS.REDIRECT) || ''
+  return memoryRedirectUrl || ''
 }
 
 /** 取出并清空回跳地址 */
 function takeRedirect() {
-  const url = wx.getStorageSync(KEYS.REDIRECT) || ''
-  wx.removeStorageSync(KEYS.REDIRECT)
+  const url = memoryRedirectUrl || ''
+  memoryRedirectUrl = ''
   return url
 }
 

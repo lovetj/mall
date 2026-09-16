@@ -168,7 +168,7 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
             return pageHotselling(pageDTO);
         }
         Page<Product> page = new Page<>(pageDTO.getPageNum(), pageDTO.getPageSize());
-        IPage<Product> result = baseMapper.selectPageWithCategory(page, pageDTO.getKeyword(), pageDTO.getCategoryId(), pageDTO.getStatus());
+        IPage<Product> result = baseMapper.selectPageWithCategory(page, pageDTO.getKeyword(), pageDTO.getCategoryId(), pageDTO.getStatus(), pageDTO.getIsDel());
         List<Product> records = result.getRecords();
         urlUtil.resolveProducts(records);
         return new PageResult<>(records, result.getTotal(), result.getPages(), result.getCurrent(), result.getSize());
@@ -180,6 +180,7 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         Product product = new Product();
         BeanUtil.copyProperties(dto, product, "tierList");
         product.setSales(0);
+        product.setIsDel(0);
 
         List<ProductTier> tierList = null;
         if (dto.getTierList() != null && !dto.getTierList().isEmpty()) {
@@ -216,6 +217,13 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateProduct(ProductDTO dto) {
+        if (dto == null || dto.getId() == null) {
+            return;
+        }
+        Product dbProduct = getById(dto.getId());
+        if (dbProduct != null && dbProduct.getIsDel() != null && dbProduct.getIsDel() == 1) {
+            throw new RuntimeException("商品已删除，仅可查看，不允许编辑！");
+        }
         Product product = new Product();
         BeanUtil.copyProperties(dto, product, "tierList");
 
@@ -263,8 +271,11 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         if (cartCount != null && cartCount > 0) {
             throw new RuntimeException("该商品已被购物车引用，无法删除，只能下架！");
         }
-        removeById(id);
-        productTierService.deleteByProductId(id);
+        // 软删除：标记 is_del=1，数据保留便于管理员查看
+        Product product = new Product();
+        product.setId(id);
+        product.setIsDel(1);
+        updateById(product);
     }
 
     @Override
@@ -277,15 +288,23 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
             if (cartCount != null && cartCount > 0) {
                 throw new RuntimeException("所选商品中存在被购物车引用的商品，无法删除，只能下架！");
             }
-            removeByIds(ids);
-            for (String id : ids) {
-                productTierService.deleteByProductId(id);
-            }
+            // 软删除：标记 is_del=1，数据保留便于管理员查看
+            List<Product> products = ids.stream().map(id -> {
+                Product p = new Product();
+                p.setId(id);
+                p.setIsDel(1);
+                return p;
+            }).collect(java.util.stream.Collectors.toList());
+            updateBatchById(products);
         }
     }
 
     @Override
     public void updateStatus(String id, Integer status) {
+        Product dbProduct = getById(id);
+        if (dbProduct != null && dbProduct.getIsDel() != null && dbProduct.getIsDel() == 1) {
+            throw new RuntimeException("商品已删除，仅可查看，不允许上架或下架！");
+        }
         Product product = new Product();
         product.setId(id);
         product.setStatus(status);
@@ -295,6 +314,13 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     @Override
     public void updateStatusBatch(List<String> ids, Integer status) {
         if (ids != null && !ids.isEmpty()) {
+            // 已删除商品不允许上架/下架，批量操作前整体校验
+            List<Product> dbList = listByIds(ids);
+            for (Product db : dbList) {
+                if (db != null && db.getIsDel() != null && db.getIsDel() == 1) {
+                    throw new RuntimeException("所选商品中存在已删除商品，仅可查看，不允许上架或下架！");
+                }
+            }
             List<Product> products = ids.stream().map(id -> {
                 Product p = new Product();
                 p.setId(id);

@@ -12,8 +12,28 @@
         focus="{{searchFocus}}"
         bindinput="onSearchInput"
         bindconfirm="onSearch"
+        bindfocus="onSearchFocus"
+        bindblur="onSearchBlur"
       />
-      <text wx:if="{{keyword}}" class="clear-icon" bindtap="onClearSearch">✕</text>
+      <text wx:if="{{keyword}}" class="clear-icon" catchtap="onClearSearch">✕</text>
+    </view>
+
+    <!-- 搜索历史下拉（仅前端缓存，最多10条，胶囊样式） -->
+    <view class="search-history-panel" wx:if="{{showSearchPanel && !keyword}}">
+      <view class="history-title">搜索历史</view>
+      <block wx:if="{{searchHistory.length > 0}}">
+        <view class="history-list">
+          <view
+            class="history-capsule ellipsis-1"
+            wx:for="{{searchHistory}}"
+            wx:key="*this"
+            data-kw="{{item}}"
+            bindtap="onUseHistory"
+          >{{item}}</view>
+        </view>
+        <view class="history-clear" bindtap="onClearHistory">清空搜索记录</view>
+      </block>
+      <view wx:else class="history-empty">暂无搜索历史</view>
     </view>
   </view>
 

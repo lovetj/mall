@@ -7,10 +7,13 @@
       wx:for="{{tabs}}"
       wx:key="key"
       data-key="{{item.key}}"
+      data-index="{{index}}"
       bindtap="onSwitchTab"
     >
       {{item.name}}
     </view>
+    <!-- 页签滑动指示条 / 滚动条 -->
+    <view class="tab-slider" style="transform: translateX({{currentTabIndex * 100}}%);"></view>
   </view>
 
   <!-- 订单列表 -->
@@ -21,12 +24,17 @@
       <view class="btn-primary go-shop" bindtap="goShopping">去逛逛</view>
     </view>
 
+    <!-- 订单卡片：点击卡片可查看详情 -->
     <view class="order-item card" wx:for="{{orders}}" wx:key="id">
-      <view class="order-head">
+      <view class="order-head" data-rawid="{{item.rawId}}" data-id="{{item.id}}" bindtap="onViewDetail">
         <text class="order-no">订单号：{{item.id}}</text>
-        <text class="order-status">{{item.statusText}}</text>
+        <view class="head-right">
+          <text class="order-status {{item.status}}">{{item.statusText}}</text>
+          <text class="arrow">›</text>
+        </view>
       </view>
-      <view class="order-goods">
+
+      <view class="order-goods" data-rawid="{{item.rawId}}" data-id="{{item.id}}" bindtap="onViewDetail">
         <view class="order-goods-item" wx:for="{{item.goods}}" wx:for-item="g" wx:key="id">
           <image class="g-img" src="{{g.image}}" mode="aspectFill" lazy-load></image>
           <view class="g-info">
@@ -41,17 +49,22 @@
           </view>
         </view>
       </view>
-      <view class="order-foot">
+
+      <view class="order-foot" data-rawid="{{item.rawId}}" data-id="{{item.id}}" bindtap="onViewDetail">
         <text class="order-time">{{item.createTime}}</text>
         <view class="order-total">
           共 {{item.totalCount}} 件，实付
           <text class="price"><text class="price-symbol">¥</text>{{item.totalPriceText}}</text>
         </view>
       </view>
-      <view class="order-actions" wx:if="{{item.status === 'unpaid' || item.status === 'unreceived'}}">
+
+      <!-- 操作按钮栏 -->
+      <view class="order-actions">
+        <view class="btn-detail" data-rawid="{{item.rawId}}" data-id="{{item.id}}" bindtap="onViewDetail">查看详情</view>
         <view
           wx:if="{{item.status === 'unpaid'}}"
           class="btn-primary act-btn"
+          data-rawid="{{item.rawId}}"
           data-id="{{item.id}}"
           bindtap="onPay"
         >立即付款</view>
@@ -63,6 +76,127 @@
         >确认收货</view>
       </view>
     </view>
+
     <view style="height: 40rpx"></view>
   </scroll-view>
+
+  <!-- 订单详情弹窗/抽屉 -->
+  <view class="detail-mask {{detailVisible ? 'show' : ''}}" bindtap="onCloseDetail">
+    <view class="detail-panel" catchtap="true" wx:if="{{currentDetail}}">
+      <view class="detail-header">
+        <view class="detail-status-banner {{currentDetail.status}}">
+          <text class="status-icon">
+            <text wx:if="{{currentDetail.status === 'unpaid'}}">⏳</text>
+            <text wx:elif="{{currentDetail.status === 'undelivered'}}">📦</text>
+            <text wx:elif="{{currentDetail.status === 'unreceived'}}">🚚</text>
+            <text wx:elif="{{currentDetail.status === 'done'}}">✅</text>
+            <text wx:else>📋</text>
+          </text>
+          <view class="status-texts">
+            <text class="status-main">{{currentDetail.statusText}}</text>
+            <text class="status-sub" wx:if="{{currentDetail.status === 'unpaid'}}">请尽快完成支付以安排发货</text>
+            <text class="status-sub" wx:elif="{{currentDetail.status === 'undelivered'}}">商家正在为您拣货打包</text>
+            <text class="status-sub" wx:elif="{{currentDetail.status === 'unreceived'}}">商品正在派送中</text>
+            <text class="status-sub" wx:elif="{{currentDetail.status === 'done'}}">订单已完成，感谢支持</text>
+          </view>
+        </view>
+        <view class="close-btn" bindtap="onCloseDetail">✕</view>
+      </view>
+
+      <scroll-view class="detail-body" scroll-y>
+        <!-- 收货信息 -->
+        <view class="detail-section address-section" wx:if="{{currentDetail.receiverName || currentDetail.receiverAddress}}">
+          <view class="section-title">收货信息</view>
+          <view class="receiver-row">
+            <text class="receiver-name">{{currentDetail.receiverName}}</text>
+            <text class="receiver-phone">{{currentDetail.receiverPhone}}</text>
+          </view>
+          <view class="receiver-addr">{{currentDetail.receiverAddress}}</view>
+        </view>
+
+        <!-- 商品明细 -->
+        <view class="detail-section">
+          <view class="section-title">商品明细 (共{{currentDetail.totalCount}}件)</view>
+          <view class="detail-goods-list">
+            <view class="detail-goods-item" wx:for="{{currentDetail.goods}}" wx:for-item="g" wx:key="id">
+              <image class="dg-img" src="{{g.image}}" mode="aspectFill"></image>
+              <view class="dg-info">
+                <view class="dg-name ellipsis-2">{{g.name}}</view>
+                <view class="dg-spec" wx:if="{{g.tierName}}">{{g.tierName}}</view>
+                <view class="dg-bottom">
+                  <text class="dg-price">¥{{g.price}}</text>
+                  <text class="dg-count">x{{g.count}}</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 费用明细 -->
+        <view class="detail-section">
+          <view class="section-title">费用明细</view>
+          <view class="fee-row">
+            <text class="fee-label">商品总额</text>
+            <text class="fee-val">¥{{currentDetail.productTotal}}</text>
+          </view>
+          <view class="fee-row">
+            <text class="fee-label">运费</text>
+            <text class="fee-val">+¥{{currentDetail.freightAmount}}</text>
+          </view>
+          <view class="fee-row total-row">
+            <text class="fee-label">实付款</text>
+            <text class="fee-val highlight">¥{{currentDetail.totalPriceText}}</text>
+          </view>
+        </view>
+
+        <!-- 订单信息 -->
+        <view class="detail-section order-meta-section">
+          <view class="section-title">订单信息</view>
+          <view class="meta-row">
+            <text class="meta-label">订单编号：</text>
+            <text class="meta-val">{{currentDetail.id}}</text>
+            <text class="copy-btn" bindtap="onCopyOrderNo" data-no="{{currentDetail.id}}">复制</text>
+          </view>
+          <view class="meta-row">
+            <text class="meta-label">支付方式：</text>
+            <text class="meta-val">{{currentDetail.payTypeText || '未支付'}}</text>
+          </view>
+          <view class="meta-row" wx:if="{{currentDetail.createTime}}">
+            <text class="meta-label">创建时间：</text>
+            <text class="meta-val">{{currentDetail.createTime}}</text>
+          </view>
+          <view class="meta-row" wx:if="{{currentDetail.payTime}}">
+            <text class="meta-label">支付时间：</text>
+            <text class="meta-val">{{currentDetail.payTime}}</text>
+          </view>
+          <view class="meta-row" wx:if="{{currentDetail.shipTime}}">
+            <text class="meta-label">发货时间：</text>
+            <text class="meta-val">{{currentDetail.shipTime}}</text>
+          </view>
+          <view class="meta-row" wx:if="{{currentDetail.remark}}">
+            <text class="meta-label">买家备注：</text>
+            <text class="meta-val">{{currentDetail.remark}}</text>
+          </view>
+        </view>
+      </scroll-view>
+
+      <!-- 弹层底部操作按钮 -->
+      <view class="detail-footer">
+        <view class="btn-plain footer-btn" bindtap="onCloseDetail">关闭</view>
+        <view
+          wx:if="{{currentDetail.status === 'unpaid'}}"
+          class="btn-primary footer-btn"
+          data-rawid="{{currentDetail.rawId}}"
+          data-id="{{currentDetail.id}}"
+          bindtap="onPay"
+        >立即付款 (¥{{currentDetail.totalPriceText}})</view>
+        <view
+          wx:if="{{currentDetail.status === 'unreceived'}}"
+          class="btn-primary footer-btn"
+          data-id="{{currentDetail.id}}"
+          bindtap="onConfirm"
+        >确认收货</view>
+      </view>
+    </view>
+  </view>
 </view>

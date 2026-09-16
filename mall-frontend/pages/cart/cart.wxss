@@ -1,14 +1,19 @@
 /*购物车页样式*/
 .cart-page {
-  /* 底部结算栏 110rpx + 自定义 TabBar 100rpx + 安全区 */
-  padding-bottom: calc(230rpx + env(safe-area-inset-bottom));
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
+/* 头部固定在顶部（flex 布局，不随内容滚动，参考首页） */
 .cart-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 24rpx 24rpx 16rpx;
+  flex-shrink: 0;
 }
 
 .cart-header-left {
@@ -21,6 +26,41 @@
   font-weight: 600;
   color: #222;
   margin-right: 12rpx;
+  line-height: 48rpx;
+}
+
+/* 可滚动内容区域 */
+.cart-scroll {
+  flex: 1;
+  height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 底部占位：结算栏 110rpx + 自定义 TabBar 100rpx + 安全区 */
+.footer-placeholder {
+  height: calc(230rpx + env(safe-area-inset-bottom));
+}
+
+/* 到底了提示（与首页一致） */
+.no-more-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 24rpx 28rpx;
+  box-sizing: border-box;
+}
+
+.no-more-line {
+  width: 80rpx;
+  height: 1rpx;
+  background-color: #e6e6e6;
+}
+
+.no-more-text {
+  margin: 0 16rpx;
+  font-size: 24rpx;
+  color: #999999;
 }
 
 .cart-count {
@@ -309,7 +349,7 @@
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: calc(100rpx + env(safe-area-inset-bottom));
   height: 110rpx;
   padding: 0 24rpx;
   padding-bottom: env(safe-area-inset-bottom);
@@ -324,6 +364,7 @@
 .footer-left {
   display: flex;
   align-items: center;
+  padding-left: 20rpx;
 }
 
 .all-text {

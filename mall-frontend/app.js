@@ -3,6 +3,7 @@ const auth = require('./utils/auth')
 const guard = require('./utils/guard')
 const config = require('./utils/config')
 const cart = require('./utils/cart')
+const { KEYS } = require('./utils/keys')
 
 App({
   globalData: {
@@ -12,6 +13,10 @@ App({
     menuRight: 0,
     isLogin: false,
     userInfo: null,
+    /** 选中的收货地址（内存传递） */
+    selectedAddress: null,
+    /** 结算商品列表（内存传递） */
+    checkoutItems: null,
     /** 登录成功后需要回跳的页面（由 guard 统一处理） */
     pendingAction: null,
     /** TabBar 页面刷新标记：微信登录成功等场景触发所有 Tab 页面全量刷新 */
@@ -27,13 +32,30 @@ App({
   },
 
   onLaunch() {
+    this.clearObsoleteStorage()
     this.initSystemInfo()
-    this.checkLoginState()
+    if (this.checkLoginState()) {
+      cart.syncFromRemote().catch(() => {})
+    }
+  },
+
+  /** 清理历史废弃本地缓存，除搜索历史及必要登录态凭证外，其余全部不留缓存 */
+  clearObsoleteStorage() {
+    try {
+      const obsoleteKeys = [KEYS.CART, KEYS.ORDERS, KEYS.ADDRESS, KEYS.CHECKOUT, KEYS.REDIRECT]
+      obsoleteKeys.forEach((key) => {
+        if (key) wx.removeStorageSync(key)
+      })
+    } catch (e) {
+      // ignore
+    }
   },
 
   onShow() {
-    // 从登录页返回时同步最新登录态
-    this.checkLoginState()
+    // 从登录页返回或切回前台时同步最新登录态与购物车
+    if (this.checkLoginState()) {
+      cart.syncFromRemote().catch(() => {})
+    }
   },
 
   /** 计算自定义导航 / 安全区相关信息 */

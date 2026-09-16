@@ -31,7 +31,7 @@ public class Order implements Serializable {
     /** 实付金额 = productTotal + freightAmount */
     private BigDecimal payAmount;
 
-    /** 支付方式 1微信 2支付宝 3货到付款 */
+    /** 支付方式 1微信 2支付宝 */
     private Integer payType;
 
     /** 状态 0待付款 1待发货 2待收货 3已完成 4已取消 */

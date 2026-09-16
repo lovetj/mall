@@ -66,7 +66,6 @@ public class PaymentServiceImpl implements PaymentService {
     /** 支付方式常量 */
     private static final int PAY_TYPE_WECHAT = 1;
     private static final int PAY_TYPE_ALIPAY = 2;
-    private static final int PAY_TYPE_COD = 3;         // 货到付款
     private static final int PAY_TYPE_MOCK = 99;
 
     @Override
@@ -103,9 +102,17 @@ public class PaymentServiceImpl implements PaymentService {
                         .last("LIMIT 1"));
 
         if (exist != null) {
-            // 已有待支付流水, 直接复用
-            log.info("[支付] 复用已有待支付流水 paymentNo={}", exist.getPaymentNo());
+            // 已有待支付流水, 如果切换了支付方式则更新支付方式后复用
+            if (request.getPayType() != null && !request.getPayType().equals(exist.getPayType())) {
+                exist.setPayType(request.getPayType());
+                paymentMapper.updateById(exist);
+            }
+            log.info("[支付] 复用已有待支付流水 paymentNo={}, payType={}", exist.getPaymentNo(), exist.getPayType());
             return buildPayResponse(exist);
+        }
+
+        if (request.getPayType() == null || (request.getPayType() != PAY_TYPE_WECHAT && request.getPayType() != PAY_TYPE_ALIPAY)) {
+            request.setPayType(PAY_TYPE_WECHAT);
         }
 
         // 4. 创建新支付流水
@@ -122,51 +129,31 @@ public class PaymentServiceImpl implements PaymentService {
         // 支付有效期: 30分钟
         payment.setExpireTime(LocalDateTime.now().plusMinutes(30));
 
-        // 记录 pay_type 到订单(先留着, 支付成功回调里再更新 pay_time)
-        order.setPayType(request.getPayType());
-        orderMapper.updateById(order);
+        paymentMapper.insert(payment);
 
         boolean isMock = payConfig.getMock().isEnabled();
-        boolean isCod = PAY_TYPE_COD == request.getPayType();
         Map<String, Object> payParams;
 
-        if (isCod) {
-            // 货到付款: 直接标记为"支付成功"(线下付款), 订单进入待发货
-            payment.setPayStatus(PAY_STATUS_SUCCESS);
-            payment.setPayTime(LocalDateTime.now());
-            payment.setTransactionId("COD-" + UUID.randomUUID().toString().replace("-", "").substring(0, 16));
-            payment.setFailReason(null);
-            payParams = buildCashOnDeliveryParams();
-            // 同步更新订单状态
-            order.setStatus(ORDER_STATUS_PENDING_SHIP);
-            order.setPayTime(LocalDateTime.now());
-            orderMapper.updateById(order);
-            log.info("[支付] 货到付款 订单={} 直接标记为支付成功", order.getOrderNo());
-        } else if (isMock) {
-            // Mock 模式: 不调真实微信, 前端可以点"模拟支付成功"
+        if (isMock) {
+            // Mock 模式: 不调真实微信/支付宝, 前端可以点"模拟支付成功"
             payParams = buildMockParams();
             log.info("[支付] Mock模式 拉起支付 paymentNo={} orderNo={} amount={}",
                     paymentNo, order.getOrderNo(), order.getPayAmount());
         } else {
-            // 真实支付: 根据 payType + platform 调微信
+            // 真实支付: 根据 payType + platform 调支付接口
             try {
                 payParams = callWechatPayApi(payment, request);
-                log.info("[支付] 真实微信支付 流水={} 通道={}", paymentNo, request.getPlatform());
+                paymentMapper.updateById(payment);
+                log.info("[支付] 真实支付 流水={} 通道={}", paymentNo, request.getPlatform());
             } catch (Exception e) {
-                log.error("[支付] 调用微信支付接口失败", e);
+                log.error("[支付] 调用支付接口失败", e);
                 payment.setPayStatus(PAY_STATUS_FAIL);
-                payment.setFailReason("微信接口调用失败: " + e.getMessage());
-                paymentMapper.insert(payment);
+                payment.setFailReason("支付接口调用失败: " + e.getMessage());
+                paymentMapper.updateById(payment);
                 resp.setSuccess(false);
                 resp.setMessage("支付发起失败, 请稍后重试");
                 return resp;
             }
-        }
-
-        if (PAY_STATUS_SUCCESS != payment.getPayStatus()) {
-            paymentMapper.insert(payment);
-        } else {
-            paymentMapper.insert(payment);
         }
 
         resp.setSuccess(true);
@@ -263,6 +250,7 @@ public class PaymentServiceImpl implements PaymentService {
             if (order != null && ORDER_STATUS_PENDING_PAY == order.getStatus()) {
                 order.setStatus(ORDER_STATUS_PENDING_SHIP);
                 order.setPayTime(LocalDateTime.now());
+                order.setPayType(payment.getPayType());
                 orderMapper.updateById(order);
             }
             log.info("[Mock支付] 成功 paymentNo={} order={}", paymentNo, payment.getOrderNo());
@@ -303,14 +291,6 @@ public class PaymentServiceImpl implements PaymentService {
         Map<String, Object> map = new HashMap<>();
         map.put("mock", true);
         map.put("tips", "模拟支付中... 请点击下方「模拟支付成功」按钮确认");
-        return map;
-    }
-
-    /** 货到付款参数: 不需要拉起任何支付 */
-    private Map<String, Object> buildCashOnDeliveryParams() {
-        Map<String, Object> map = new HashMap<>();
-        map.put("cod", true);
-        map.put("tips", "已选择货到付款, 收货时现金/扫码支付给快递员即可");
         return map;
     }
 

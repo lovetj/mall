@@ -3,6 +3,7 @@ const cart = require('../../utils/cart')
 const guard = require('../../utils/guard')
 const modalMixin = require('../../utils/modal-mixin')
 const api = require('../../utils/api')
+const { KEYS } = require('../../utils/keys')
 const { formatImageUrl } = require('../../utils/config')
 
 Page(Object.assign({}, modalMixin, {
@@ -14,6 +15,9 @@ Page(Object.assign({}, modalMixin, {
     goodsList: [],
     keyword: '',
     searchFocus: false,
+    // 搜索历史（仅前端缓存，最多10条）
+    searchHistory: [],
+    showSearchPanel: false,
     // 右侧列表 scroll-view 自带下拉刷新状态（页面级下拉刷新在 scroll-view 滚动区不生效）
     refresherTriggered: false,
     // 商品分页状态
@@ -32,6 +36,11 @@ Page(Object.assign({}, modalMixin, {
   focusOnShow: false,
 
   onLoad() {
+    if (cart && typeof cart.syncFromRemote === 'function') {
+      cart.syncFromRemote().catch(() => {}).then(() => {
+        this.refreshCart()
+      })
+    }
     this.loadCategories()
   },
 
@@ -98,10 +107,14 @@ Page(Object.assign({}, modalMixin, {
 
     const reloadCategories = this.refreshCategories(categoryId)
     const reloadProducts = this.loadProducts(categoryId, keyword, true)
+    const syncCart = (cart && typeof cart.syncFromRemote === 'function')
+      ? cart.syncFromRemote().catch(() => {})
+      : Promise.resolve()
 
-    return Promise.all([reloadCategories, reloadProducts])
+    return Promise.all([reloadCategories, reloadProducts, syncCart])
       .catch(() => {})
       .then(() => {
+        this.refreshCart()
         this.syncTabBar()
       })
   },
@@ -220,6 +233,10 @@ Page(Object.assign({}, modalMixin, {
     } else if (categoryId && categoryId !== 'all') {
       params.categoryId = categoryId
     }
+    // 普通分页查询排除已删除商品（热销走 /hotselling/page，后端已过滤）
+    if (categoryId !== 'hot') {
+      params.isDel = 0
+    }
     if (keyword && keyword.trim()) {
       params.keyword = keyword.trim()
     }
@@ -292,10 +309,9 @@ Page(Object.assign({}, modalMixin, {
     const app = getApp()
     if (app && app.globalData.tabRefreshFlags && app.globalData.tabRefreshFlags.category) {
       app.globalData.tabRefreshFlags.category = false
-      this.reloadCategoryData()
-    } else {
-      this.refreshCart()
     }
+    // 每次切回分类页都重新加载两侧数据（保留当前选中分类与搜索关键字），保证页面渲染最新
+    this.reloadCategoryData()
 
     // 仅当首页点击搜索框跳转过来（focusOnShow 为 true）时才聚焦搜索框，消费一次后立即复位；
     // 其余任何场景（切 Tab、返回本页、从登录页返回等）都不会聚焦
@@ -392,16 +408,73 @@ Page(Object.assign({}, modalMixin, {
     this.loadProducts(cat.id)
   },
 
-  /** 切换左侧类别 */
+  /** 切换左侧类别：保留搜索框内容，带关键字一起搜索 */
   onSelectCategory(e) {
     const { id, name } = e.currentTarget.dataset
     if (id === this.data.currentId) return
+    const keyword = this.data.keyword.trim()
     this.setData({
       currentId: id,
-      currentName: name,
-      keyword: ''
+      currentName: name
     })
-    this.loadProducts(id)
+    // 热销分类 /hotselling/page 同样支持 keyword 过滤，统一带关键字查询
+    this.loadProducts(id, keyword)
+  },
+
+  /** 加载搜索历史并刷新展示列表 */
+  loadSearchHistory() {
+    const list = wx.getStorageSync(KEYS.SEARCH_HISTORY) || []
+    this.setData({ searchHistory: Array.isArray(list) ? list : [] })
+  },
+
+  /** 写入一条搜索历史（去重、置顶、最多保留10条） */
+  saveSearchHistory(keyword) {
+    const kw = (keyword || '').trim()
+    if (!kw) return
+    const list = (wx.getStorageSync(KEYS.SEARCH_HISTORY) || []).filter((it) => it !== kw)
+    list.unshift(kw)
+    const capped = list.slice(0, 10)
+    wx.setStorageSync(KEYS.SEARCH_HISTORY, capped)
+    this.setData({ searchHistory: capped })
+  },
+
+  /** 聚焦输入框：展示搜索历史下拉 */
+  onSearchFocus() {
+    this.loadSearchHistory()
+    this.setData({ showSearchPanel: true })
+  },
+
+  /** 输入框失焦：关闭搜索历史下拉 */
+  onSearchBlur() {
+    this.setData({ showSearchPanel: false })
+  },
+
+  hideSearchPanel() {
+    this.setData({ showSearchPanel: false })
+  },
+
+  /** 点击历史词：执行搜索并置顶该词 */
+  onUseHistory(e) {
+    const kw = (e.currentTarget.dataset.kw || '').trim()
+    if (!kw) return
+    this.setData({ keyword: kw, showSearchPanel: false })
+    this.doSearch(kw)
+  },
+
+  /** 清空全部搜索历史：二次确认 */
+  onClearHistory() {
+    wx.showModal({
+      title: '提示',
+      content: '确定要清空全部搜索历史吗？',
+      confirmText: '清空',
+      confirmColor: '#ff5000',
+      cancelText: '取消',
+      success: (res) => {
+        if (!res.confirm) return
+        wx.removeStorageSync(KEYS.SEARCH_HISTORY)
+        this.setData({ searchHistory: [] })
+      }
+    })
   },
 
   /** 输入内容变化：防抖 400ms 后自动调用接口搜索 */
@@ -428,6 +501,7 @@ Page(Object.assign({}, modalMixin, {
 
   /** 按关键字搜索（在全部商品中搜索） */
   doSearch(keyword) {
+    this.saveSearchHistory(keyword)
     this.setData({ currentName: `搜索：${keyword}` })
     this.loadProducts('', keyword)
   },
@@ -441,8 +515,10 @@ Page(Object.assign({}, modalMixin, {
     const keyword = this.data.keyword.trim()
     if (!keyword) {
       this.loadProducts(this.data.currentId)
+      this.setData({ showSearchPanel: true })
       return
     }
+    this.hideSearchPanel()
     this.doSearch(keyword)
   },
 
@@ -454,7 +530,8 @@ Page(Object.assign({}, modalMixin, {
     const currentCat = this.data.categories.find((c) => c.id === this.data.currentId)
     this.setData({
       keyword: '',
-      currentName: currentCat ? currentCat.name : '全部'
+      currentName: currentCat ? currentCat.name : '全部',
+      showSearchPanel: false
     })
     this.loadProducts(this.data.currentId)
   },
@@ -478,14 +555,24 @@ Page(Object.assign({}, modalMixin, {
     })
   },
 
-  doAddCart(goods) {
-    if (goods && goods.status === 0) {
-      wx.showToast({ title: '商品已下架', icon: 'none' })
-      return
+  async doAddCart(goods) {
+    if (this._updatingCount) return
+    this._updatingCount = true
+    try {
+      const { ok, message } = await cart.checkBuyable(goods)
+      if (!ok) {
+        wx.showToast({ title: message, icon: 'none' })
+        this.reloadCategoryData()
+        return
+      }
+      await cart.addToCart(goods, 1)
+      this.refreshCart()
+      wx.showToast({ title: '已加入购物车', icon: 'success' })
+    } catch (err) {
+      // 加购失败保持原状态，错误提示由 request 统一处理
+    } finally {
+      this._updatingCount = false
     }
-    cart.addToCart(goods, 1)
-    this.refreshCart()
-    wx.showToast({ title: '已加入购物车', icon: 'success' })
   },
 
   /** 登录成功后回跳本页时自动续做加购 */
@@ -526,6 +613,7 @@ Page(Object.assign({}, modalMixin, {
     if (!goods) return
     if (goods.status === 0) {
       wx.showToast({ title: '商品已下架', icon: 'none' })
+      this.reloadCategoryData()
       return
     }
     guard.ensureLogin({
@@ -537,16 +625,26 @@ Page(Object.assign({}, modalMixin, {
   },
 
   /** 列表项减购 */
-  onListDecreaseCart(e) {
+  async onListDecreaseCart(e) {
     const idx = e.currentTarget.dataset.index
     const goods = this.data.goodsList[idx]
     if (!goods) return
-    if (goods.status === 0) {
-      wx.showToast({ title: '商品已下架', icon: 'none' })
-      return
+    if (this._updatingCount) return
+    this._updatingCount = true
+    try {
+      const { ok, message } = await cart.checkBuyable(goods)
+      if (!ok) {
+        wx.showToast({ title: message, icon: 'none' })
+        this.reloadCategoryData()
+        return
+      }
+      await cart.decreaseFromCart(goods)
+      this.refreshCart()
+    } catch (err) {
+      // 接口调用失败保持原数量，错误提示已由 request 统一弹出
+    } finally {
+      this._updatingCount = false
     }
-    cart.decreaseFromCart(goods)
-    this.refreshCart()
   },
 
   /** 列表项图片加载失败：清空图片地址以回退为「无图片」占位 */

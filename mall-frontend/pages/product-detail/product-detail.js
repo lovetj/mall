@@ -44,7 +44,13 @@ Page(Object.assign({}, modalMixin, {
   },
 
   onShow() {
-    this.refreshCart()
+    if (cart && typeof cart.syncFromRemote === 'function') {
+      cart.syncFromRemote().catch(() => {}).then(() => {
+        this.refreshCart()
+      })
+    } else {
+      this.refreshCart()
+    }
   },
 
   onUnload() {
@@ -331,25 +337,36 @@ Page(Object.assign({}, modalMixin, {
   },
 
   /** 确认加入购物车 */
-  onConfirmQuantity() {
+  async onConfirmQuantity() {
     const product = this.data.product
     if (!product) return
-    const tierList = this.data.tierList || []
-    let selectedTier = this.data.selectedTier
-    if (tierList.length > 0 && !selectedTier) {
-      selectedTier = tierList[0]
-      this.setData({ selectedTier, selectedTierId: selectedTier.id })
-    }
+    try {
+      const { ok, message } = await cart.checkBuyable(product)
+      if (!ok) {
+        util.toast(message)
+        this.setData({ showQuantity: false })
+        this.loadDetail(this.data.productId || product.id)
+        return
+      }
+      const tierList = this.data.tierList || []
+      let selectedTier = this.data.selectedTier
+      if (tierList.length > 0 && !selectedTier) {
+        selectedTier = tierList[0]
+        this.setData({ selectedTier, selectedTierId: selectedTier.id })
+      }
 
-    if (selectedTier && selectedTier.stock !== undefined && selectedTier.stock <= 0) {
-      util.toast('该规格已售罄')
-      return
-    }
+      if (selectedTier && selectedTier.stock !== undefined && selectedTier.stock <= 0) {
+        util.toast('该规格已售罄')
+        return
+      }
 
-    const quantity = this.data.quantity
-    cart.addToCart(product, quantity, selectedTier)
-    this.setData({ showQuantity: false })
-    this.refreshCart()
-    wx.showToast({ title: '已加入购物车', icon: 'success' })
+      const quantity = this.data.quantity
+      await cart.addToCart(product, quantity, selectedTier)
+      this.setData({ showQuantity: false })
+      this.refreshCart()
+      wx.showToast({ title: '已加入购物车', icon: 'success' })
+    } catch (err) {
+      // 加购失败保持弹窗或状态
+    }
   }
 }))

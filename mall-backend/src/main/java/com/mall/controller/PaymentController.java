@@ -48,7 +48,7 @@ public class PaymentController {
     /**
      * 拉起支付
      * POST /api/payment/create
-     * Body: { orderId, payType(1微信/2支付宝/3货到付款), platform, openid }
+     * Body: { orderId, payType(1微信/2支付宝), platform, openid }
      */
     @PostMapping("/create")
     public Result<PayResponseDTO> create(@Validated @RequestBody PayRequestDTO request,

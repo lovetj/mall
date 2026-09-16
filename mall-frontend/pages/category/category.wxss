@@ -10,6 +10,8 @@
 }
 
 .header {
+  position: relative;
+  z-index: 30;
   padding: 20rpx 24rpx;
   background: linear-gradient(180deg, #ff5000, #ff7a1a);
   flex-shrink: 0;
@@ -19,10 +21,69 @@
   background: rgba(255, 255, 255, 0.95);
 }
 
-.clear-icon {
+.header .clear-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52rpx;
+  height: 52rpx;
+  margin-left: 8rpx;
+  font-size: 26rpx;
   color: #999;
-  font-size: 24rpx;
-  padding: 0 6rpx;
+  flex-shrink: 0;
+  z-index: 2;
+}
+
+/* 搜索历史下拉 */
+.search-history-panel {
+  position: absolute;
+  left: 24rpx;
+  right: 24rpx;
+  top: calc(100% + 2rpx);
+  background: #fff;
+  border-radius: 16rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.12);
+  padding: 20rpx 24rpx;
+  z-index: 20;
+}
+.history-title {
+  font-size: 26rpx;
+  color: #999;
+  margin-bottom: 16rpx;
+}
+.ellipsis-1 {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* 搜索历史：胶囊式流式布局，无单条删除 */
+.history-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20rpx;
+}
+.history-capsule {
+  max-width: 100%;
+  padding: 12rpx 32rpx;
+  font-size: 26rpx;
+  color: #444;
+  background: #f5f6f7;
+  border-radius: 999rpx;
+  box-sizing: border-box;
+}
+.history-clear {
+  margin-top: 24rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #f0f0f0;
+  text-align: center;
+  font-size: 26rpx;
+  color: #ff5000;
+}
+.history-empty {
+  padding: 24rpx 4rpx;
+  font-size: 26rpx;
+  color: #999;
+  text-align: center;
 }
 
 .body {
@@ -121,12 +182,14 @@
 /* 右侧商品 */
 .goods-area {
   flex: 1;
+  min-width: 0;
   height: 100%;
   background: #fff;
 }
 
 .goods-list {
   padding: 20rpx 20rpx 60rpx;
+  box-sizing: border-box;
 }
 
 /* 空状态：在右侧列表区域内上下居中 */
@@ -154,8 +217,8 @@
   overflow: hidden;
   padding: 16rpx;
   margin-bottom: 20rpx;
-  width: 80%;
-  max-width: 80%;
+  width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
   border: 2rpx solid #f2f3f5;
 }
@@ -290,7 +353,7 @@
 .stepper-btn {
   width: 48rpx;
   height: 48rpx;
-  line-height: 44rpx;
+  line-height: 1;
   text-align: center;
   border-radius: 50%;
   font-size: 32rpx;
@@ -299,6 +362,22 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.add-cart-btn {
+  width: 48rpx;
+  height: 48rpx;
+  line-height: 1;
+  text-align: center;
+  border-radius: 50%;
+  font-size: 32rpx;
+  font-weight: 500;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #ff8a3d, #ff5000);
+  color: #ffffff;
 }
 
 .stepper-minus {

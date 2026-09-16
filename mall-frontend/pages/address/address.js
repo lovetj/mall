@@ -4,7 +4,6 @@
 const auth = require('../../utils/auth')
 const guard = require('../../utils/guard')
 const util = require('../../utils/util')
-const { KEYS } = require('../../utils/keys')
 const api = require('../../utils/api')
 
 Page({
@@ -55,31 +54,6 @@ Page({
     api.getAddressList().then((res) => {
       const list = Array.isArray(res) ? res : []
       this.setData({ addressList: list, loading: false })
-      
-      // 同步默认地址到本地缓存
-      const defaultAddr = list.find((a) => a.isDefault === 1) || list[0] || null
-      if (defaultAddr) {
-        const cached = {
-          id: defaultAddr.id,
-          name: defaultAddr.receiverName || defaultAddr.name || '',
-          receiverName: defaultAddr.receiverName || defaultAddr.name || '',
-          phone: defaultAddr.phone || defaultAddr.receiverPhone || '',
-          receiverPhone: defaultAddr.phone || defaultAddr.receiverPhone || '',
-          detail: defaultAddr.detailAddress || defaultAddr.detail || '',
-          detailAddress: defaultAddr.detailAddress || defaultAddr.detail || '',
-          province: defaultAddr.province || '',
-          city: defaultAddr.city || '',
-          district: defaultAddr.district || '',
-          houseNumber: defaultAddr.houseNumber || '',
-          addressType: defaultAddr.addressType || '',
-          latitude: defaultAddr.latitude || null,
-          longitude: defaultAddr.longitude || null,
-          isDefault: defaultAddr.isDefault || 0
-        }
-        wx.setStorageSync(KEYS.ADDRESS, cached)
-      } else {
-        wx.removeStorageSync(KEYS.ADDRESS)
-      }
     }).catch(() => {
       this.setData({ loading: false })
     })
@@ -91,24 +65,10 @@ Page({
       const id = e.currentTarget.dataset.id
       const selected = this.data.addressList.find((item) => item.id === id)
       if (selected) {
-        const cached = {
-          id: selected.id,
-          name: selected.receiverName || selected.name || '',
-          receiverName: selected.receiverName || selected.name || '',
-          phone: selected.phone || selected.receiverPhone || '',
-          receiverPhone: selected.phone || selected.receiverPhone || '',
-          detail: selected.detailAddress || selected.detail || '',
-          detailAddress: selected.detailAddress || selected.detail || '',
-          province: selected.province || '',
-          city: selected.city || '',
-          district: selected.district || '',
-          houseNumber: selected.houseNumber || '',
-          addressType: selected.addressType || '',
-          latitude: selected.latitude || null,
-          longitude: selected.longitude || null,
-          isDefault: selected.isDefault || 0
+        const app = getApp()
+        if (app) {
+          app.globalData.selectedAddress = selected
         }
-        wx.setStorageSync(KEYS.ADDRESS, cached)
         wx.navigateBack()
       }
     }

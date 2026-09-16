@@ -1,14 +1,17 @@
 <template>
   <view class="product-edit-page">
+    <view class="readonly-banner" v-if="isReadonly">
+      <text class="readonly-banner-text">仅查看模式：该商品已删除，只能查看不能编辑</text>
+    </view>
     <view class="form-section">
       <view class="form-item">
         <text class="form-label">商品名称 *</text>
-        <input class="form-input" v-model="form.name" placeholder="请输入商品名称" />
+        <input class="form-input" v-model="form.name" placeholder="请输入商品名称" :disabled="isReadonly" />
       </view>
 
       <view class="form-item">
         <text class="form-label">商品分类 *</text>
-        <picker :value="categoryIndex" :range="categoryList" range-key="name" @change="onCategoryChange">
+        <picker :value="categoryIndex" :range="categoryList" range-key="name" @change="onCategoryChange" :disabled="isReadonly">
           <view class="form-picker">
             {{ categoryList[categoryIndex]?.name || '请选择分类' }}
           </view>
@@ -23,10 +26,10 @@
         <view class="tag-select-grid" v-if="allTags.length > 0">
           <view
             class="tag-select-chip"
-            :class="{ active: isTagSelected(tag.id) }"
+            :class="{ active: isTagSelected(tag.id), readonly: isReadonly }"
             v-for="tag in allTags"
             :key="tag.id"
-            @click="toggleTag(tag.id)"
+            @click="!isReadonly && toggleTag(tag.id)"
           >
             <image
               v-if="tag.image"
@@ -52,36 +55,36 @@
           <view class="tier-card" v-for="(tier, tIndex) in tierList" :key="tIndex">
             <view class="tier-card-header">
               <text class="tier-index-title">规格 {{ tIndex + 1 }}</text>
-              <view class="tier-delete-btn" v-if="tierList.length > 1" @click="removeTier(tIndex)">删除规格</view>
+              <view class="tier-delete-btn" v-if="tierList.length > 1 && !isReadonly" @click="removeTier(tIndex)">删除规格</view>
             </view>
             <view class="tier-grid">
               <view class="tier-grid-item">
                 <text class="tier-sub-label">规格名称 *</text>
-                <input class="tier-input" v-model="tier.name" placeholder="如: 1斤装、2斤装" />
+                <input class="tier-input" v-model="tier.name" placeholder="如: 1斤装、2斤装" :disabled="isReadonly" />
               </view>
               <view class="tier-grid-item">
                 <text class="tier-sub-label">售价(元) *</text>
-                <input class="tier-input" v-model="tier.price" type="digit" placeholder="0.00" @input="syncTierPriceAndStock" />
+                <input class="tier-input" v-model="tier.price" type="digit" placeholder="0.00" @input="syncTierPriceAndStock" :disabled="isReadonly" />
               </view>
               <view class="tier-grid-item">
                 <text class="tier-sub-label">原价/划线价(元)</text>
-                <input class="tier-input" v-model="tier.originalPrice" type="digit" placeholder="选填" />
+                <input class="tier-input" v-model="tier.originalPrice" type="digit" placeholder="选填" :disabled="isReadonly" />
               </view>
               <view class="tier-grid-item">
                 <text class="tier-sub-label">单位</text>
-                <input class="tier-input" v-model="tier.unit" placeholder="如: 斤、份" />
+                <input class="tier-input" v-model="tier.unit" placeholder="如: 斤、份" :disabled="isReadonly" />
               </view>
               <view class="tier-grid-item">
                 <text class="tier-sub-label">库存数量</text>
-                <input class="tier-input" v-model="tier.stock" type="number" placeholder="999" @input="syncTierPriceAndStock" />
+                <input class="tier-input" v-model="tier.stock" type="number" placeholder="999" @input="syncTierPriceAndStock" :disabled="isReadonly" />
               </view>
               <view class="tier-grid-item">
                 <text class="tier-sub-label">排序</text>
-                <input class="tier-input" v-model="tier.sort" type="number" placeholder="数字越小越靠前" />
+                <input class="tier-input" v-model="tier.sort" type="number" placeholder="数字越小越靠前" :disabled="isReadonly" />
               </view>
             </view>
           </view>
-          <view class="add-tier-btn" @click="addTier">
+          <view class="add-tier-btn" v-if="!isReadonly" @click="addTier">
             <text class="plus-icon">+</text>
             <text>添加价格规格层级</text>
           </view>
@@ -90,27 +93,27 @@
 
       <view class="form-item">
         <text class="form-label">商品展示起售价 (自动计算)</text>
-        <input class="form-input disabled" v-model="form.price" type="digit" placeholder="由上方规格最低价自动生成" />
+        <input class="form-input disabled" v-model="form.price" type="digit" placeholder="由上方规格最低价自动生成" :disabled="true" />
       </view>
 
       <view class="form-item">
         <text class="form-label">主单位</text>
-        <input class="form-input" v-model="form.unit" placeholder="请输入主单位，如：斤、个" />
+        <input class="form-input" v-model="form.unit" placeholder="请输入主单位，如：斤、个" :disabled="isReadonly" />
       </view>
 
       <view class="form-item">
         <text class="form-label">总库存 (自动计算)</text>
-        <input class="form-input disabled" v-model="form.stock" type="number" placeholder="由上方规格库存自动汇总" />
+        <input class="form-input disabled" v-model="form.stock" type="number" placeholder="由上方规格库存自动汇总" :disabled="true" />
       </view>
 
       <view class="form-item">
         <text class="form-label">产地</text>
-        <input class="form-input" v-model="form.origin" placeholder="请输入产地" />
+        <input class="form-input" v-model="form.origin" placeholder="请输入产地" :disabled="isReadonly" />
       </view>
 
       <view class="form-item">
         <text class="form-label">商品描述</text>
-        <textarea class="form-textarea" v-model="form.description" placeholder="请输入商品描述"></textarea>
+        <textarea class="form-textarea" v-model="form.description" placeholder="请输入商品描述" :disabled="isReadonly"></textarea>
       </view>
 
       <view class="form-item">
@@ -121,9 +124,9 @@
         <view class="image-upload-wrap">
           <view class="image-item single-image" v-if="form.image">
             <image class="preview-image" :src="formatUrl(form.image)" mode="aspectFill" @click="previewSingleImage"></image>
-            <view class="delete-icon" @click.stop="removeSingleImage">×</view>
+            <view class="delete-icon" v-if="!isReadonly" @click.stop="removeSingleImage">×</view>
           </view>
-          <view class="upload-btn" v-else @click="chooseSingleImage">
+          <view class="upload-btn" v-else-if="!isReadonly" @click="chooseSingleImage">
             <text class="plus-icon">+</text>
             <text class="upload-tip">上传图片</text>
           </view>
@@ -166,14 +169,14 @@
               :draggable="false"
               @click="handleImageClick(index)"
             ></image>
-            <view class="delete-icon" @click.stop="removeMultiImage(index)" title="删除图片">×</view>
+            <view class="delete-icon" v-if="!isReadonly" @click.stop="removeMultiImage(index)" title="删除图片">×</view>
 
-            <view class="drag-tag" v-if="imageList.length > 1">
+            <view class="drag-tag" v-if="imageList.length > 1 && !isReadonly">
               <text class="drag-handle-dots">⋮⋮</text>
               <text>按住拖拽</text>
             </view>
           </view>
-          <view class="upload-btn" @click="chooseMultiImages" v-if="imageList.length < 9">
+          <view class="upload-btn" @click="chooseMultiImages" v-if="!isReadonly && imageList.length < 9">
             <text class="plus-icon">+</text>
             <text class="upload-tip">添加图片</text>
           </view>
@@ -183,20 +186,20 @@
       <view class="form-item">
         <text class="form-label">状态</text>
         <view class="status-switch">
-          <view class="switch-item" :class="{ active: form.status === 1 }" @click="form.status = 1">上架</view>
-          <view class="switch-item" :class="{ active: form.status === 0 }" @click="form.status = 0">下架</view>
+          <view class="switch-item" :class="{ active: form.status === 1 }" @click="!isReadonly && (form.status = 1)">上架</view>
+          <view class="switch-item" :class="{ active: form.status === 0 }" @click="!isReadonly && (form.status = 0)">下架</view>
         </view>
       </view>
 
       <view class="form-item">
         <text class="form-label">排序</text>
-        <input class="form-input" v-model="form.sort" type="number" placeholder="数字越小越靠前" />
+        <input class="form-input" v-model="form.sort" type="number" placeholder="数字越小越靠前" :disabled="isReadonly" />
       </view>
     </view>
 
     <view class="form-actions">
-      <view class="action-btn cancel" @click="goBack">取消</view>
-      <view class="action-btn submit" @click="handleSubmit">保存</view>
+      <view class="action-btn cancel" @click="goBack">{{ isReadonly ? '返回' : '取消' }}</view>
+      <view class="action-btn submit" v-if="!isReadonly" @click="handleSubmit">保存</view>
     </view>
   </view>
 </template>
@@ -210,6 +213,7 @@ export default {
   data() {
     return {
       id: null,
+      isReadonly: false,
       form: {
         name: '',
         categoryId: null,
@@ -254,10 +258,11 @@ export default {
 }
     },
   async onLoad(options) {
+    this.isReadonly = options && options.readonly === '1'
     await Promise.all([this.loadTags(), this.loadCategories()])
     if (options && options.id) {
       this.id = options.id
-      uni.setNavigationBarTitle({ title: '编辑商品' })
+      uni.setNavigationBarTitle({ title: this.isReadonly ? '查看商品' : '编辑商品' })
       await this.loadDetail()
     } else {
       uni.setNavigationBarTitle({ title: '添加商品' })
@@ -266,6 +271,7 @@ export default {
   methods: {      
 
     addTier() {
+      if (this.isReadonly) return
       const defaultUnit = this.form.unit || '斤'
       const nextIndex = this.tierList.length + 1
       this.tierList.push({
@@ -279,6 +285,7 @@ export default {
       this.syncTierPriceAndStock()
     },
     removeTier(index) {
+      if (this.isReadonly) return
       if (this.tierList.length <= 1) {
         uni.showToast({ title: '至少保留一个规格', icon: 'none' })
         return
@@ -341,6 +348,7 @@ export default {
       return this.selectedTagIds.some(tagId => String(tagId) === String(id))
     },
     toggleTag(id) {
+      if (this.isReadonly) return
       const targetId = String(id)
       const idx = this.selectedTagIds.findIndex(tagId => String(tagId) === targetId)
       if (idx > -1) {
@@ -455,6 +463,7 @@ export default {
       }
     },
     async chooseSingleImage() {
+      if (this.isReadonly) return
       try {
         const data = await chooseAndUploadSingleImage({
           module: 'product',
@@ -469,6 +478,7 @@ export default {
 }
     },
     removeSingleImage() {
+      if (this.isReadonly) return
       this.form.image = ''
     },
     previewSingleImage() {
@@ -481,6 +491,7 @@ export default {
       })
     },
     chooseMultiImages() {
+      if (this.isReadonly) return
       const remainingCount = 9 - (Array.isArray(this.imageList) ? this.imageList.length : 0)
       if (remainingCount <= 0) {
         uni.showToast({ title: '最多上传9张图片', icon: 'none' })
@@ -555,6 +566,7 @@ export default {
       })
     },
     removeMultiImage(index) {
+      if (this.isReadonly) return
       this.imageList.splice(index, 1)
       this.syncImagesToForm()
     },
@@ -572,6 +584,7 @@ export default {
       })
     },
     onDragStart(e, index) {
+      if (this.isReadonly) return
       this.dragIndex = index
       this.dragOverIndex = null
       this.isDragging = true
@@ -643,6 +656,7 @@ export default {
       this.isDragging = false
     },
     onTouchStart(e, index) {
+      if (this.isReadonly) return
       this.touchStartIndex = index
       this.dragIndex = index
       this.isDragging = true
@@ -703,6 +717,7 @@ export default {
       this.form.images = this.imageList.length > 0 ? JSON.stringify(this.imageList) : ''
     },
     async handleSubmit() {
+      if (this.isReadonly) return
       if (!this.form.name) {
         uni.showToast({ title: '请输入商品名称', icon: 'none' })
         return
@@ -777,6 +792,19 @@ export default {
   overscroll-behavior: none;
   overscroll-behavior-x: none;
   touch-action: pan-y;
+}
+
+.readonly-banner {
+  background: #fff7e6;
+  border: 1rpx solid #ffd591;
+  border-radius: 10rpx;
+  padding: 16rpx 20rpx;
+  margin-bottom: 20rpx;
+}
+
+.readonly-banner-text {
+  font-size: 26rpx;
+  color: #d46b08;
 }
 
 .form-section {
@@ -942,6 +970,14 @@ export default {
   background: #e6f7ff;
   border-color: #1890ff;
   color: #1890ff;
+}
+
+.tag-select-chip.readonly {
+  cursor: default;
+  pointer-events: none;
+  background: #fafafa;
+  border-color: #f0f0f0;
+  color: #999;
 }
 
 .tag-chip-icon {

@@ -91,6 +91,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             if (product == null) {
                 throw new RuntimeException("购物车中存在已下架的商品(id=" + cart.getProductId() + ")");
             }
+            if (product.getIsDel() != null && product.getIsDel() == 1) {
+                throw new RuntimeException("商品已删除: " + product.getName());
+            }
             if (product.getStatus() != null && product.getStatus() != 1) {
                 throw new RuntimeException("商品已下架: " + product.getName());
             }
@@ -200,6 +203,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             Product product = productMapper.selectById(itemDTO.getProductId());
             if (product == null) {
                 throw new RuntimeException("商品不存在: " + itemDTO.getProductId());
+            }
+            if (product.getIsDel() != null && product.getIsDel() == 1) {
+                throw new RuntimeException("商品已删除: " + product.getName());
             }
 
             ProductTier tier = null;

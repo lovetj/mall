@@ -10,4 +10,5 @@ public class PageDTO {
     private String categoryId;
     private Integer status;
     private Integer isHotselling;
+    private Integer isDel;
 }

@@ -9,6 +9,7 @@ const KEYS = {
   ORDERS: 'mall_orders',
   ADDRESS: 'mall_address',
   CHECKOUT: 'mall_checkout',
+  SEARCH_HISTORY: 'mall_search_history',
   REDIRECT: 'mall_redirect'
 }
 

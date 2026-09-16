@@ -1,12 +1,9 @@
 /**购物车页：需登录后进入，支持勾选、增减、删除、结算 */
 const cart = require('../../utils/cart')
 const guard = require('../../utils/guard')
-const order = require('../../utils/order')
 const util = require('../../utils/util')
 const auth = require('../../utils/auth')
 const modalMixin = require('../../utils/modal-mixin')
-const { KEYS } = require('../../utils/keys')
-const api = require('../../utils/api')
 
 Page(Object.assign({}, modalMixin, {
   data: {
@@ -16,7 +13,8 @@ Page(Object.assign({}, modalMixin, {
     allChecked: false,
     totalPrice: '0.00',
     totalCount: 0,
-    editing: false
+    editing: false,
+    refresherTriggered: false
   },
 
   onShow() {
@@ -54,10 +52,10 @@ Page(Object.assign({}, modalMixin, {
     this.refreshCartData()
   },
 
-  /** 下拉刷新 */
-  onPullDownRefresh() {
-    this.refreshCartData().catch(() => {}).then(() => {
-      wx.stopPullDownRefresh()
+  /** 下拉刷新（scroll-view 内部刷新，页面与底部导航条不移动，参考首页） */
+  onRefresherRefresh() {
+    this.refreshCartData().catch(() => {}).finally(() => {
+      this.setData({ refresherTriggered: false })
     })
   },
 
@@ -162,13 +160,15 @@ Page(Object.assign({}, modalMixin, {
       title: '提示',
       content: '确定要删除这件商品吗？',
       confirmColor: '#ff5000',
-      success: (res) => {
+      success: async (res) => {
         if (res.confirm) {
-          Promise.resolve(cart.removeGoods(id)).then(() => {
-            this.refreshCartData()
-          })
-          this.applyList(cart.getCart())
-          util.toast('已删除')
+          try {
+            const updatedList = await cart.removeGoods(id)
+            this.applyList(updatedList)
+            util.toast('已删除')
+          } catch (err) {
+            // 删除失败保持原样
+          }
         }
       }
     })
@@ -181,13 +181,15 @@ Page(Object.assign({}, modalMixin, {
       title: '提示',
       content: '确定清空所有已下架失效商品吗？',
       confirmColor: '#ff5000',
-      success: (res) => {
+      success: async (res) => {
         if (res.confirm) {
-          Promise.resolve(cart.clearOffShelf()).then(() => {
-            this.refreshCartData()
-          })
-          this.applyList(cart.getCart())
-          util.toast('已清空失效商品')
+          try {
+            const updatedList = await cart.clearOffShelf()
+            this.applyList(updatedList)
+            util.toast('已清空失效商品')
+          } catch (err) {
+            // 清空失败保持原样
+          }
         }
       }
     })
@@ -214,66 +216,19 @@ Page(Object.assign({}, modalMixin, {
     this.setData({ editing: !this.data.editing })
   },
 
-  /** 去结算 / 下单 */
+  /** 去结算 / 下单页 */
   onCheckout() {
     const checked = (this.data.validList || []).filter((item) => item.checked)
     if (!checked.length) {
       util.toast('请先选择商品')
       return
     }
-    // 已登录（页面已拦截），直接下单
-    const address = wx.getStorageSync(KEYS.ADDRESS) || null
-    if (!address) {
-      wx.showModal({
-        title: '提示',
-        content: '还没有收货地址，是否先去添加？',
-        confirmText: '去添加',
-        confirmColor: '#ff5000',
-        success: (res) => {
-          if (res.confirm) wx.navigateTo({ url: '/pages/address/address' })
-        }
-      })
-      return
+    // 将选中的商品传递给确认订单页（通过 globalData 内存传递，不存 Storage 缓存）
+    const app = getApp()
+    if (app) {
+      app.globalData.checkoutItems = checked
     }
-
-    // 尝试调用后端创建订单接口
-    const defaultAddress = wx.getStorageSync(KEYS.ADDRESS)
-    const cartItemIds = checked.map((item) => item.id).filter(Boolean)
-    const checkoutData = {
-      cartItemIds,
-      addressId: (defaultAddress && defaultAddress.id) || null,
-      remark: '小程序下单'
-    }
-
-    api.checkoutOrder(checkoutData).then((orderVO) => {
-      cart.removeChecked()
-      this.refreshCart()
-      wx.showModal({
-        title: '下单成功',
-        content: `订单号：${orderVO.orderNo || orderVO.id}\n实付：¥${util.formatPrice(orderVO.totalAmount || this.data.totalPrice)}`,
-        showCancel: false,
-        confirmText: '查看订单',
-        confirmColor: '#ff5000',
-        success: () => {
-          wx.navigateTo({ url: '/pages/orders/orders?status=unpaid' })
-        }
-      })
-    }).catch(() => {
-      // 降级使用本地订单管理
-      const orderInfo = order.createOrder(checked, 'unpaid')
-      cart.removeChecked()
-      this.refreshCart()
-      wx.showModal({
-        title: '下单成功',
-        content: `订单号：${orderInfo.id}\n实付：¥${util.formatPrice(orderInfo.totalPrice)}`,
-        showCancel: false,
-        confirmText: '查看订单',
-        confirmColor: '#ff5000',
-        success: () => {
-          wx.navigateTo({ url: '/pages/orders/orders?status=unpaid' })
-        }
-      })
-    })
+    wx.navigateTo({ url: '/pages/checkout/checkout' })
   },
 
   /** 去逛逛 */
