@@ -16,19 +16,33 @@
         <view class="order-info">
           <view class="info-row">
             <text class="info-label">收货人:</text>
-            <text class="info-value">{{ item.receiverName }}</text>
-          </view>
-          <view class="info-row">
-            <text class="info-label">联系电话:</text>
-            <text class="info-value">{{ item.receiverPhone }}</text>
+            <text class="info-value">{{ item.receiverName }} ({{ item.receiverPhone }})</text>
           </view>
           <view class="info-row">
             <text class="info-label">收货地址:</text>
             <text class="info-value">{{ item.receiverAddress }}</text>
           </view>
         </view>
+
+        <!-- 商品明细及规格展示 -->
+        <view class="order-items-wrap" v-if="item.items && item.items.length > 0">
+          <view class="order-goods-row" v-for="(goods, gIdx) in item.items" :key="gIdx">
+            <image class="goods-img" :src="formatUrl(goods.productImage)" mode="aspectFill" v-if="goods.productImage"></image>
+            <view class="goods-detail">
+              <view class="goods-title-line">
+                <text class="goods-name">{{ goods.productName }}</text>
+                <text class="goods-tier" v-if="goods.tierName">【{{ goods.tierName }}】</text>
+              </view>
+              <view class="goods-price-line">
+                <text class="goods-price">¥{{ goods.price }}</text>
+                <text class="goods-qty">x{{ goods.quantity }}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+
         <view class="order-footer">
-          <text class="order-amount">¥{{ item.totalAmount }}</text>
+          <text class="order-amount">实付: ¥{{ item.payAmount || item.totalAmount || 0 }}</text>
           <text class="order-time">{{ formatDate(item.createTime) }}</text>
         </view>
       </view>
@@ -42,6 +56,7 @@
 
 <script>
 import api from '../../api/index'
+import { formatImageUrl } from '../../utils/request'
 
 export default {
   data() {
@@ -56,6 +71,9 @@ export default {
     this.loadOrders()
   },
   methods: {
+    formatUrl(path) {
+      return formatImageUrl(path)
+    },
     async loadOrders() {
       try {
         const data = await api.getOrderPage({
@@ -181,10 +199,77 @@ export default {
   flex: 1;
 }
 
+.order-items-wrap {
+  background: #fcfcfc;
+  border-radius: 8rpx;
+  padding: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.order-goods-row {
+  display: flex;
+  align-items: center;
+  padding: 8rpx 0;
+  border-bottom: 1rpx dashed #eee;
+}
+
+.order-goods-row:last-child {
+  border-bottom: none;
+}
+
+.goods-img {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 6rpx;
+  margin-right: 12rpx;
+}
+
+.goods-detail {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.goods-title-line {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.goods-name {
+  font-size: 26rpx;
+  color: #333;
+}
+
+.goods-tier {
+  font-size: 24rpx;
+  color: #1890ff;
+  font-weight: 500;
+}
+
+.goods-price-line {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.goods-price {
+  font-size: 26rpx;
+  color: #ff4d4f;
+  font-weight: 500;
+}
+
+.goods-qty {
+  font-size: 24rpx;
+  color: #888;
+}
+
 .order-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-top: 16rpx;
 }
 
 .order-amount {

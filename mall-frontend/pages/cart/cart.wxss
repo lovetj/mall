@@ -81,6 +81,26 @@
   color: #222;
 }
 
+.item-tier {
+  margin-top: 4rpx;
+}
+
+.tier-tag {
+  display: inline-block;
+  font-size: 20rpx;
+  color: #ff5000;
+  background: #fff2e8;
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+  border: 1rpx solid #ffbb96;
+}
+
+.price-unit {
+  font-size: 22rpx;
+  color: #999;
+  margin-left: 4rpx;
+}
+
 .item-bottom {
   display: flex;
   align-items: center;

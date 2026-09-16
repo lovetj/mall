@@ -22,10 +22,14 @@
       <image class="item-img" src="{{item.image}}" mode="aspectFill" lazy-load></image>
       <view class="item-info">
         <view class="item-name ellipsis-2">{{item.name}}</view>
+        <view class="item-tier" wx:if="{{item.tierName}}">
+          <text class="tier-tag">{{item.tierName}}</text>
+        </view>
         <view class="item-bottom">
           <view class="price">
             <text class="price-symbol">¥</text>
             <text class="price-value">{{item.price}}</text>
+            <text class="price-unit" wx:if="{{item.unit}}">/{{item.unit}}</text>
           </view>
           <view class="stepper">
             <view class="step-btn" data-id="{{item.id}}" bindtap="onMinus">−</view>

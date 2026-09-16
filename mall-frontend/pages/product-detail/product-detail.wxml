@@ -50,7 +50,8 @@
         <view class="price">
           <text class="price-symbol">¥</text>
           <text class="price-value price-value-lg">{{priceText}}</text>
-          <text class="price-unit" wx:if="{{product.unit}}">/{{product.unit}}</text>
+          <text class="price-unit" wx:if="{{currentUnit || product.unit}}">/{{currentUnit || product.unit}}</text>
+          <text class="price-original" wx:if="{{currentOriginalPrice}}">¥{{currentOriginalPrice}}</text>
         </view>
         <view class="sales-info">
           <text class="sales-text">已售 {{salesText}}</text>
@@ -68,6 +69,26 @@
         >
           <image wx:if="{{item.image}}" class="tag-icon" src="{{item.image}}" mode="aspectFit" />
           <text class="tag-name {{item.isHotselling ? 'tag-name-hot' : ''}}">{{item.name}}</text>
+        </view>
+      </view>
+
+      <!-- 多规格选择卡片 -->
+      <view class="tier-select-section" wx:if="{{tierList.length > 0}}">
+        <view class="tier-section-title">
+          <text class="title-text">规格定位</text>
+          <text class="sub-text">（请选择对应规格层级）</text>
+        </view>
+        <view class="tier-options">
+          <view
+            class="tier-option-item {{item.id === selectedTierId ? 'active' : ''}}"
+            wx:for="{{tierList}}"
+            wx:key="id"
+            data-id="{{item.id}}"
+            bindtap="onSelectTier"
+          >
+            <view class="tier-opt-name">{{item.name}}</view>
+            <view class="tier-opt-price">¥{{item.price}}<text class="opt-unit" wx:if="{{item.unit}}">/{{item.unit}}</text></view>
+          </view>
         </view>
       </view>
 
@@ -97,15 +118,15 @@
     </view>
   </block>
 
-  <!-- 数量选择弹窗 -->
+  <!-- 数量与规格选择弹窗 -->
   <view class="quantity-popup" wx:if="{{showQuantity}}">
     <view class="popup-mask" bindtap="closeQuantity"></view>
     <view class="popup-content" catchtap="noop">
       <view class="popup-header">
         <image
-          wx:if="{{swiperImages[0]}}"
+          wx:if="{{currentImage || swiperImages[0]}}"
           class="popup-image"
-          src="{{swiperImages[0]}}"
+          src="{{currentImage || swiperImages[0]}}"
           mode="aspectFill"
         />
         <view wx:else class="popup-image popup-image-empty">🖼️</view>
@@ -113,9 +134,29 @@
           <view class="price">
             <text class="price-symbol">¥</text>
             <text class="price-value">{{priceText}}</text>
+            <text class="price-unit" wx:if="{{currentUnit || product.unit}}">/{{currentUnit || product.unit}}</text>
+            <text class="price-original" wx:if="{{currentOriginalPrice}}">¥{{currentOriginalPrice}}</text>
           </view>
+          <view class="popup-stock" wx:if="{{currentStock !== undefined}}">库存: {{currentStock}}件</view>
+          <view class="popup-selected" wx:if="{{selectedTier}}">已选: {{selectedTier.name}}</view>
         </view>
         <view class="popup-close" bindtap="closeQuantity">✕</view>
+      </view>
+
+      <!-- 弹窗内的规格切换 -->
+      <view class="popup-tier-section" wx:if="{{tierList.length > 0}}">
+        <view class="popup-section-label">规格</view>
+        <view class="popup-tier-list">
+          <view
+            class="popup-tier-chip {{item.id === selectedTierId ? 'active' : ''}}"
+            wx:for="{{tierList}}"
+            wx:key="id"
+            data-id="{{item.id}}"
+            bindtap="onSelectTier"
+          >
+            <text>{{item.name}} (¥{{item.price}})</text>
+          </view>
+        </view>
       </view>
 
       <view class="quantity-row">

@@ -56,21 +56,30 @@ Page({
       const list = pageData.list || pageData.records || []
       if (Array.isArray(list) && list.length > 0) {
         const formatted = list.map((item) => {
-          const items = (item.items || []).map((prod) => ({
-            ...prod,
-            image: formatImageUrl(prod.productImage || prod.image)
+          const rawItems = item.items || item.goods || []
+          const goods = rawItems.map((prod) => ({
+            id: prod.id,
+            name: prod.productName || prod.name || '商品',
+            tierName: prod.tierName || '',
+            image: formatImageUrl(prod.productImage || prod.image),
+            price: util.formatPrice(prod.price),
+            count: prod.quantity || prod.count || 1
           }))
+          const totalCount = goods.reduce((sum, g) => sum + (Number(g.count) || 1), 0)
           return {
             id: item.orderNo || item.id,
             rawId: item.id,
             status: this.mapStatusToKey(item.status),
             statusText: this.mapStatusToText(item.status),
+            createTime: item.createTime || '',
+            totalCount: totalCount || 1,
             totalPrice: item.totalAmount || item.totalPrice,
             totalPriceText: util.formatPrice(item.totalAmount || item.totalPrice),
-            items: items.length > 0 ? items : (item.productImage ? [{
+            goods: goods.length > 0 ? goods : (item.productImage ? [{
               name: item.productName || '商品',
+              tierName: item.tierName || '',
               image: formatImageUrl(item.productImage),
-              price: item.totalAmount || item.price,
+              price: util.formatPrice(item.totalAmount || item.price),
               count: 1
             }] : [])
           }

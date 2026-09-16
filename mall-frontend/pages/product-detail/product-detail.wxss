@@ -109,11 +109,125 @@
   font-size: 48rpx;
 }
 
-.price-unit {
+.price-original {
+  font-size: 26rpx;
+  color: #999;
+  text-decoration: line-through;
+  font-weight: 400;
+  margin-left: 16rpx;
+}
+
+/* 规格选择区域 */
+.tier-select-section {
+  margin-top: 24rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.tier-section-title {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.tier-section-title .title-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.tier-section-title .sub-text {
   font-size: 24rpx;
   color: var(--text-gray);
-  font-weight: 400;
-  margin-left: 6rpx;
+  margin-left: 8rpx;
+}
+
+.tier-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.tier-option-item {
+  display: flex;
+  flex-direction: column;
+  padding: 14rpx 24rpx;
+  border-radius: 12rpx;
+  background: #f7f8fa;
+  border: 2rpx solid transparent;
+  box-sizing: border-box;
+}
+
+.tier-option-item.active {
+  background: #fff7e6;
+  border-color: #ff5000;
+}
+
+.tier-opt-name {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.tier-option-item.active .tier-opt-name {
+  color: #ff5000;
+}
+
+.tier-opt-price {
+  font-size: 24rpx;
+  color: #ff5000;
+  margin-top: 4rpx;
+}
+
+.opt-unit {
+  font-size: 20rpx;
+  color: var(--text-gray);
+}
+
+.popup-stock {
+  font-size: 24rpx;
+  color: var(--text-gray);
+  margin-top: 6rpx;
+}
+
+.popup-selected {
+  font-size: 24rpx;
+  color: #ff5000;
+  margin-top: 4rpx;
+}
+
+.popup-tier-section {
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.popup-section-label {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 16rpx;
+}
+
+.popup-tier-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.popup-tier-chip {
+  padding: 12rpx 24rpx;
+  font-size: 26rpx;
+  color: var(--text-main);
+  background: #f5f5f5;
+  border-radius: 30rpx;
+  border: 2rpx solid transparent;
+}
+
+.popup-tier-chip.active {
+  color: #ff5000;
+  background: #fff7e6;
+  border-color: #ff5000;
+  font-weight: 600;
 }
 
 .sales-info {

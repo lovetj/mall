@@ -16,10 +16,12 @@ import com.mall.mapper.CartMapper;
 import com.mall.mapper.OrderItemMapper;
 import com.mall.mapper.OrderMapper;
 import com.mall.mapper.ProductMapper;
+import com.mall.mapper.ProductTierMapper;
 import com.mall.util.UrlUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -30,6 +32,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
     @Autowired
     private ProductMapper productMapper;
+
+    @Autowired
+    private ProductTierMapper productTierMapper;
 
     @Autowired
     private OrderItemMapper orderItemMapper;
@@ -63,13 +68,22 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             throw new RuntimeException("未找到要结算的购物车商品");
         }
 
-        // 3. 批量查询商品
+        // 3. 批量查询商品和规格
         List<String> productIds = cartList.stream().map(Cart::getProductId).distinct().collect(Collectors.toList());
         List<Product> products = productMapper.selectBatchIds(productIds);
         Map<String, Product> productMap = products.stream()
                 .collect(Collectors.toMap(Product::getId, p -> p, (k1, k2) -> k1));
 
-        // 4. 校验购物车中每个商品是否存在、在售、库存足够
+        List<String> tierIds = cartList.stream()
+                .map(Cart::getTierId)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<String, ProductTier> tierMap = tierIds.isEmpty() ? Collections.emptyMap() :
+                productTierMapper.selectBatchIds(tierIds).stream()
+                        .collect(Collectors.toMap(ProductTier::getId, t -> t, (t1, t2) -> t1));
+
+        // 4. 校验购物车中每个商品及规格是否存在、在售、库存足够
         BigDecimal productTotal = BigDecimal.ZERO;
         List<OrderItem> orderItems = new ArrayList<>();
         for (Cart cart : cartList) {
@@ -80,19 +94,31 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             if (product.getStatus() != null && product.getStatus() != 1) {
                 throw new RuntimeException("商品已下架: " + product.getName());
             }
-            if (product.getStock() != null && cart.getQuantity() > product.getStock()) {
+
+            ProductTier tier = StringUtils.hasText(cart.getTierId()) ? tierMap.get(cart.getTierId()) : null;
+            if (tier != null) {
+                if (tier.getStatus() != null && tier.getStatus() != 1) {
+                    throw new RuntimeException("商品规格已下架: " + product.getName() + " - " + tier.getName());
+                }
+                if (tier.getStock() != null && cart.getQuantity() > tier.getStock()) {
+                    throw new RuntimeException("商品规格库存不足: " + product.getName() + " (" + tier.getName() + ") 仅剩 " + tier.getStock());
+                }
+            } else if (product.getStock() != null && cart.getQuantity() > product.getStock()) {
                 throw new RuntimeException("商品库存不足: " + product.getName() + " 库存" + product.getStock());
             }
 
-            BigDecimal itemAmount = product.getPrice().multiply(BigDecimal.valueOf(cart.getQuantity()));
+            BigDecimal itemPrice = (tier != null && tier.getPrice() != null) ? tier.getPrice() : product.getPrice();
+            BigDecimal itemAmount = itemPrice.multiply(BigDecimal.valueOf(cart.getQuantity()));
             productTotal = productTotal.add(itemAmount);
 
             OrderItem oi = new OrderItem();
             oi.setProductId(product.getId());
             oi.setProductName(product.getName());
-            oi.setProductImage(product.getImage());
-            oi.setProductUnit(product.getUnit());
-            oi.setPrice(product.getPrice());
+            oi.setProductImage(tier != null && StringUtils.hasText(tier.getImage()) ? tier.getImage() : product.getImage());
+            oi.setProductUnit(tier != null && StringUtils.hasText(tier.getUnit()) ? tier.getUnit() : product.getUnit());
+            oi.setTierId(tier != null ? tier.getId() : cart.getTierId());
+            oi.setTierName(tier != null ? tier.getName() : "默认规格");
+            oi.setPrice(itemPrice);
             oi.setQuantity(cart.getQuantity());
             oi.setAmount(itemAmount);
             orderItems.add(oi);
@@ -175,15 +201,36 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             if (product == null) {
                 throw new RuntimeException("商品不存在: " + itemDTO.getProductId());
             }
-            BigDecimal itemAmount = product.getPrice().multiply(BigDecimal.valueOf(itemDTO.getQuantity()));
+
+            ProductTier tier = null;
+            if (StringUtils.hasText(itemDTO.getTierId())) {
+                tier = productTierMapper.selectById(itemDTO.getTierId());
+            }
+
+            if (tier != null) {
+                if (tier.getStatus() != null && tier.getStatus() != 1) {
+                    throw new RuntimeException("商品规格已下架: " + product.getName() + " - " + tier.getName());
+                }
+                if (tier.getStock() != null && itemDTO.getQuantity() > tier.getStock()) {
+                    throw new RuntimeException("商品规格库存不足: " + product.getName() + " (" + tier.getName() + ") 仅剩 " + tier.getStock());
+                }
+            } else if (product.getStock() != null && itemDTO.getQuantity() > product.getStock()) {
+                throw new RuntimeException("商品库存不足: " + product.getName() + " 库存" + product.getStock());
+            }
+
+            BigDecimal itemPrice = (tier != null && tier.getPrice() != null) ? tier.getPrice() :
+                    (itemDTO.getPrice() != null ? itemDTO.getPrice() : product.getPrice());
+            BigDecimal itemAmount = itemPrice.multiply(BigDecimal.valueOf(itemDTO.getQuantity()));
             productTotal = productTotal.add(itemAmount);
 
             OrderItem oi = new OrderItem();
             oi.setProductId(product.getId());
             oi.setProductName(product.getName());
-            oi.setProductImage(product.getImage());
-            oi.setProductUnit(product.getUnit());
-            oi.setPrice(product.getPrice());
+            oi.setProductImage(tier != null && StringUtils.hasText(tier.getImage()) ? tier.getImage() : product.getImage());
+            oi.setProductUnit(tier != null && StringUtils.hasText(tier.getUnit()) ? tier.getUnit() : product.getUnit());
+            oi.setTierId(tier != null ? tier.getId() : itemDTO.getTierId());
+            oi.setTierName(tier != null ? tier.getName() : (StringUtils.hasText(itemDTO.getTierName()) ? itemDTO.getTierName() : "默认规格"));
+            oi.setPrice(itemPrice);
             oi.setQuantity(itemDTO.getQuantity());
             oi.setAmount(itemAmount);
             orderItems.add(oi);

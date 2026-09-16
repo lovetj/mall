@@ -96,6 +96,20 @@
   color: #222;
 }
 
+.g-spec {
+  margin-top: 4rpx;
+}
+
+.spec-tag {
+  display: inline-block;
+  font-size: 20rpx;
+  color: #ff5000;
+  background: #fff2e8;
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+  border: 1rpx solid #ffbb96;
+}
+
 .g-bottom {
   display: flex;
   align-items: center;

@@ -123,13 +123,13 @@ export default {
     },
   async onLoad(options) {
     if (options && options.id) {
-      this.id = parseInt(options.id)
+      this.id = options.id
       uni.setNavigationBarTitle({ title: '编辑标签' })
       this.loadDetail()
     } else {
       uni.setNavigationBarTitle({ title: '新建标签' })
-}
-    },
+    }
+  },
   methods: {      
 
     formatUrl(path) {

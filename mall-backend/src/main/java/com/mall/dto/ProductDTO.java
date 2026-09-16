@@ -4,6 +4,8 @@ import lombok.Data;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
+import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 public class ProductDTO {
@@ -21,8 +23,7 @@ public class ProductDTO {
 
     private String tags;
 
-    @NotNull(message = "价格不能为空")
-    private java.math.BigDecimal price;
+    private BigDecimal price;
 
     private String unit;
 
@@ -35,4 +36,6 @@ public class ProductDTO {
     private Integer status;
 
     private Integer sort;
+
+    private List<ProductTierDTO> tierList;
 }

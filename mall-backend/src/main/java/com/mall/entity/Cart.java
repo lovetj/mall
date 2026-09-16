@@ -18,6 +18,8 @@ public class Cart implements Serializable {
 
     private String productId;
 
+    private String tierId;
+
     private Integer quantity;
 
     @TableField(fill = FieldFill.INSERT)

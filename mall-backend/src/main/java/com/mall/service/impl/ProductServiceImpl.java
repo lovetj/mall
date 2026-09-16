@@ -6,7 +6,10 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.mall.dto.ProductDTO;
+import com.mall.dto.ProductTierDTO;
+import com.mall.entity.ProductTier;
 import com.mall.service.ProductService;
+import com.mall.service.ProductTierService;
 import com.mall.common.PageResult;
 import com.mall.dto.PageDTO;
 import com.mall.entity.Cart;
@@ -18,8 +21,10 @@ import com.mall.mapper.ProductTagMapper;
 import com.mall.util.UrlUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -34,6 +39,9 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
 
     @Autowired
     private CartMapper cartMapper;
+
+    @Autowired
+    private ProductTierService productTierService;
 
     @Autowired
     private UrlUtil urlUtil;
@@ -167,21 +175,84 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void addProduct(ProductDTO dto) {
         Product product = new Product();
-        BeanUtil.copyProperties(dto, product);
+        BeanUtil.copyProperties(dto, product, "tierList");
         product.setSales(0);
+
+        List<ProductTier> tierList = null;
+        if (dto.getTierList() != null && !dto.getTierList().isEmpty()) {
+            tierList = dto.getTierList().stream().map(t -> {
+                ProductTier tier = new ProductTier();
+                BeanUtil.copyProperties(t, tier);
+                return tier;
+            }).collect(Collectors.toList());
+
+            BigDecimal minPrice = tierList.stream()
+                    .map(ProductTier::getPrice)
+                    .filter(p -> p != null)
+                    .min(BigDecimal::compareTo)
+                    .orElse(dto.getPrice());
+            if (minPrice != null) {
+                product.setPrice(minPrice);
+            }
+            int totalStock = tierList.stream()
+                    .mapToInt(t -> t.getStock() != null ? t.getStock() : 0)
+                    .sum();
+            product.setStock(totalStock);
+            if (!StringUtils.hasText(product.getUnit()) && StringUtils.hasText(tierList.get(0).getUnit())) {
+                product.setUnit(tierList.get(0).getUnit());
+            }
+        }
+
         save(product);
+
+        if (tierList != null && !tierList.isEmpty()) {
+            productTierService.saveOrUpdateTiers(product.getId(), tierList);
+        }
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void updateProduct(ProductDTO dto) {
         Product product = new Product();
-        BeanUtil.copyProperties(dto, product);
+        BeanUtil.copyProperties(dto, product, "tierList");
+
+        List<ProductTier> tierList = null;
+        if (dto.getTierList() != null && !dto.getTierList().isEmpty()) {
+            tierList = dto.getTierList().stream().map(t -> {
+                ProductTier tier = new ProductTier();
+                BeanUtil.copyProperties(t, tier);
+                return tier;
+            }).collect(Collectors.toList());
+
+            BigDecimal minPrice = tierList.stream()
+                    .map(ProductTier::getPrice)
+                    .filter(p -> p != null)
+                    .min(BigDecimal::compareTo)
+                    .orElse(dto.getPrice());
+            if (minPrice != null) {
+                product.setPrice(minPrice);
+            }
+            int totalStock = tierList.stream()
+                    .mapToInt(t -> t.getStock() != null ? t.getStock() : 0)
+                    .sum();
+            product.setStock(totalStock);
+            if (!StringUtils.hasText(product.getUnit()) && StringUtils.hasText(tierList.get(0).getUnit())) {
+                product.setUnit(tierList.get(0).getUnit());
+            }
+        }
+
         updateById(product);
+
+        if (dto.getTierList() != null) {
+            productTierService.saveOrUpdateTiers(product.getId(), tierList);
+        }
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteProduct(String id) {
         if (id == null) {
             return;
@@ -193,9 +264,11 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
             throw new RuntimeException("该商品已被购物车引用，无法删除，只能下架！");
         }
         removeById(id);
+        productTierService.deleteByProductId(id);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteBatch(List<String> ids) {
         if (ids != null && !ids.isEmpty()) {
             LambdaQueryWrapper<Cart> cartWrapper = new LambdaQueryWrapper<>();
@@ -205,6 +278,9 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
                 throw new RuntimeException("所选商品中存在被购物车引用的商品，无法删除，只能下架！");
             }
             removeByIds(ids);
+            for (String id : ids) {
+                productTierService.deleteByProductId(id);
+            }
         }
     }
 

@@ -42,19 +42,65 @@
         </view>
       </view>
 
-      <view class="form-item">
-        <text class="form-label">商品价格 *</text>
-        <input class="form-input" v-model="form.price" type="digit" placeholder="请输入价格" />
+      <!-- 价格层级/多规格配置 -->
+      <view class="form-item tier-section">
+        <view class="label-row">
+          <text class="form-label">规格与多价格层级 *</text>
+          <text class="form-tip">支持配置不同规格层级（如1斤、2斤等），系统将自动以最低价作为起步价</text>
+        </view>
+        <view class="tier-list">
+          <view class="tier-card" v-for="(tier, tIndex) in tierList" :key="tIndex">
+            <view class="tier-card-header">
+              <text class="tier-index-title">规格 {{ tIndex + 1 }}</text>
+              <view class="tier-delete-btn" v-if="tierList.length > 1" @click="removeTier(tIndex)">删除规格</view>
+            </view>
+            <view class="tier-grid">
+              <view class="tier-grid-item">
+                <text class="tier-sub-label">规格名称 *</text>
+                <input class="tier-input" v-model="tier.name" placeholder="如: 1斤装、2斤装" />
+              </view>
+              <view class="tier-grid-item">
+                <text class="tier-sub-label">售价(元) *</text>
+                <input class="tier-input" v-model="tier.price" type="digit" placeholder="0.00" @input="syncTierPriceAndStock" />
+              </view>
+              <view class="tier-grid-item">
+                <text class="tier-sub-label">原价/划线价(元)</text>
+                <input class="tier-input" v-model="tier.originalPrice" type="digit" placeholder="选填" />
+              </view>
+              <view class="tier-grid-item">
+                <text class="tier-sub-label">单位</text>
+                <input class="tier-input" v-model="tier.unit" placeholder="如: 斤、份" />
+              </view>
+              <view class="tier-grid-item">
+                <text class="tier-sub-label">库存数量</text>
+                <input class="tier-input" v-model="tier.stock" type="number" placeholder="999" @input="syncTierPriceAndStock" />
+              </view>
+              <view class="tier-grid-item">
+                <text class="tier-sub-label">排序</text>
+                <input class="tier-input" v-model="tier.sort" type="number" placeholder="数字越小越靠前" />
+              </view>
+            </view>
+          </view>
+          <view class="add-tier-btn" @click="addTier">
+            <text class="plus-icon">+</text>
+            <text>添加价格规格层级</text>
+          </view>
+        </view>
       </view>
 
       <view class="form-item">
-        <text class="form-label">单位</text>
-        <input class="form-input" v-model="form.unit" placeholder="请输入单位，如：斤、个" />
+        <text class="form-label">商品展示起售价 (自动计算)</text>
+        <input class="form-input disabled" v-model="form.price" type="digit" placeholder="由上方规格最低价自动生成" />
       </view>
 
       <view class="form-item">
-        <text class="form-label">库存</text>
-        <input class="form-input" v-model="form.stock" type="number" placeholder="请输入库存数量" />
+        <text class="form-label">主单位</text>
+        <input class="form-input" v-model="form.unit" placeholder="请输入主单位，如：斤、个" />
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">总库存 (自动计算)</text>
+        <input class="form-input disabled" v-model="form.stock" type="number" placeholder="由上方规格库存自动汇总" />
       </view>
 
       <view class="form-item">
@@ -176,8 +222,19 @@ export default {
         images: '',
         tags: '',
         status: 1,
-        sort: 0
+        sort: 0,
+        tierList: []
       },
+      tierList: [
+        {
+          name: '1斤装',
+          price: '',
+          originalPrice: '',
+          unit: '斤',
+          stock: 999,
+          sort: 0
+        }
+      ],
       allTags: [],
       selectedTagIds: [],
       imageList: [],
@@ -197,15 +254,64 @@ export default {
 }
     },
   async onLoad(options) {
-    await this.loadTags()
-    if (options.id) {
-      this.id = parseInt(options.id)
+    await Promise.all([this.loadTags(), this.loadCategories()])
+    if (options && options.id) {
+      this.id = options.id
+      uni.setNavigationBarTitle({ title: '编辑商品' })
       await this.loadDetail()
+    } else {
+      uni.setNavigationBarTitle({ title: '添加商品' })
     }
-    this.loadCategories()
   },
   methods: {      
 
+    addTier() {
+      const defaultUnit = this.form.unit || '斤'
+      const nextIndex = this.tierList.length + 1
+      this.tierList.push({
+        name: nextIndex === 2 ? '2斤装' : `${nextIndex}斤装`,
+        price: '',
+        originalPrice: '',
+        unit: defaultUnit,
+        stock: 999,
+        sort: this.tierList.length * 10
+      })
+      this.syncTierPriceAndStock()
+    },
+    removeTier(index) {
+      if (this.tierList.length <= 1) {
+        uni.showToast({ title: '至少保留一个规格', icon: 'none' })
+        return
+      }
+      this.tierList.splice(index, 1)
+      this.syncTierPriceAndStock()
+    },
+    syncTierPriceAndStock() {
+      let minPrice = null
+      let totalStock = 0
+      let hasValidPrice = false
+
+      for (const t of this.tierList) {
+        if (t.price !== '' && t.price !== null && !isNaN(Number(t.price))) {
+          const p = Number(t.price)
+          if (minPrice === null || p < minPrice) {
+            minPrice = p
+          }
+          hasValidPrice = true
+        }
+        if (t.stock !== '' && t.stock !== null && !isNaN(Number(t.stock))) {
+          totalStock += Number(t.stock)
+        }
+      }
+
+      if (hasValidPrice && minPrice !== null) {
+        this.form.price = String(minPrice)
+      }
+      this.form.stock = totalStock || 0
+      if (this.tierList.length > 0 && this.tierList[0].unit) {
+        this.form.unit = this.tierList[0].unit
+      }
+    },
     formatUrl(path) {
       return formatImageUrl(path)
     },
@@ -214,14 +320,14 @@ export default {
         const data = await api.getCategoryList()
         this.categoryList = data || []
         if (this.form.categoryId) {
-          const index = this.categoryList.findIndex(c => c.id === this.form.categoryId)
+          const index = this.categoryList.findIndex(c => String(c.id) === String(this.form.categoryId))
           if (index > -1) {
             this.categoryIndex = index
           }
         }
       } catch (e) {
         console.error(e)
-}
+      }
     },
     async loadTags() {
       try {
@@ -229,17 +335,18 @@ export default {
         this.allTags = (data || []).filter(t => t.status === 1)
       } catch (e) {
         console.error('加载标签列表失败', e)
-}
+      }
     },
     isTagSelected(id) {
-      return this.selectedTagIds.includes(id)
+      return this.selectedTagIds.some(tagId => String(tagId) === String(id))
     },
     toggleTag(id) {
-      const idx = this.selectedTagIds.indexOf(id)
+      const targetId = String(id)
+      const idx = this.selectedTagIds.findIndex(tagId => String(tagId) === targetId)
       if (idx > -1) {
         this.selectedTagIds.splice(idx, 1)
       } else {
-        this.selectedTagIds.push(id)
+        this.selectedTagIds.push(targetId)
       }
       this.syncTagsToForm()
     },
@@ -249,18 +356,58 @@ export default {
     async loadDetail() {
       try {
         const data = await api.getProductDetail(this.id)
+        if (!data) return
         this.form = { ...this.form, ...data }
-        if (this.form.tags) {
+
+        // 回显分类索引
+        if (this.form.categoryId && this.categoryList.length > 0) {
+          const index = this.categoryList.findIndex(c => String(c.id) === String(this.form.categoryId))
+          if (index > -1) {
+            this.categoryIndex = index
+          }
+        }
+        
+        // 处理规格列表
+        if (data.tierList && Array.isArray(data.tierList) && data.tierList.length > 0) {
+          this.tierList = data.tierList.map(t => ({
+            id: t.id,
+            productId: t.productId,
+            name: t.name,
+            price: t.price != null ? String(t.price) : '',
+            originalPrice: t.originalPrice != null ? String(t.originalPrice) : '',
+            unit: t.unit || this.form.unit || '斤',
+            stock: t.stock != null ? t.stock : 999,
+            sort: t.sort != null ? t.sort : 0
+          }))
+        } else {
+          // 兜底生成一个默认规格
+          this.tierList = [
+            {
+              name: '1斤装',
+              price: this.form.price != null ? String(this.form.price) : '',
+              originalPrice: this.form.originalPrice != null ? String(this.form.originalPrice) : '',
+              unit: this.form.unit || '斤',
+              stock: this.form.stock != null ? this.form.stock : 999,
+              sort: 0
+            }
+          ]
+        }
+        this.syncTierPriceAndStock()
+
+        // 回显选中的标签
+        if (data.tagList && Array.isArray(data.tagList) && data.tagList.length > 0) {
+          this.selectedTagIds = data.tagList.map(t => String(t.id))
+        } else if (this.form.tags) {
           try {
             if (Array.isArray(this.form.tags)) {
-              this.selectedTagIds = this.form.tags.map(v => Number(v)).filter(v => !isNaN(v))
+              this.selectedTagIds = this.form.tags.map(v => String(v)).filter(Boolean)
             } else if (typeof this.form.tags === 'string') {
               const str = this.form.tags.trim()
               if (str.startsWith('[')) {
                 const parsed = JSON.parse(str)
-                this.selectedTagIds = Array.isArray(parsed) ? parsed.map(v => Number(v)).filter(v => !isNaN(v)) : []
+                this.selectedTagIds = Array.isArray(parsed) ? parsed.map(v => String(v)).filter(Boolean) : []
               } else {
-                this.selectedTagIds = str.split(',').map(s => Number(s.trim())).filter(v => !isNaN(v))
+                this.selectedTagIds = str.split(',').map(s => s.trim().replace(/^["']|["']$/g, '')).filter(Boolean)
               }
             }
           } catch (e) {
@@ -269,6 +416,8 @@ export default {
         } else {
           this.selectedTagIds = []
         }
+
+        // 回显详情轮播图
         if (this.form.images) {
           try {
             if (Array.isArray(this.form.images)) {
@@ -296,11 +445,14 @@ export default {
         }
       } catch (e) {
         console.error('加载商品详情失败', e)
-}
+      }
     },
     onCategoryChange(e) {
-      this.categoryIndex = e.detail.value
-      this.form.categoryId = this.categoryList[this.categoryIndex].id
+      const idx = Number(e.detail.value)
+      this.categoryIndex = idx
+      if (this.categoryList[idx]) {
+        this.form.categoryId = this.categoryList[idx].id
+      }
     },
     async chooseSingleImage() {
       try {
@@ -559,20 +711,47 @@ export default {
         uni.showToast({ title: '请选择商品分类', icon: 'none' })
         return
       }
-      if (!this.form.price) {
-        uni.showToast({ title: '请输入商品价格', icon: 'none' })
+
+      if (!this.tierList || this.tierList.length === 0) {
+        uni.showToast({ title: '请至少添加一个商品规格', icon: 'none' })
         return
       }
 
+      for (let i = 0; i < this.tierList.length; i++) {
+        const t = this.tierList[i]
+        if (!t.name || !t.name.trim()) {
+          uni.showToast({ title: `请输入第 ${i + 1} 个规格的名称`, icon: 'none' })
+          return
+        }
+        if (t.price === '' || t.price === null || isNaN(Number(t.price)) || Number(t.price) < 0) {
+          uni.showToast({ title: `请输入第 ${i + 1} 个规格的有效价格`, icon: 'none' })
+          return
+        }
+      }
+
+      this.syncTierPriceAndStock()
       this.syncImagesToForm()
       this.syncTagsToForm()
 
+      const payload = {
+        ...this.form,
+        tierList: this.tierList.map((t, idx) => ({
+          id: t.id || null,
+          name: t.name.trim(),
+          price: Number(t.price),
+          originalPrice: t.originalPrice !== '' && t.originalPrice != null ? Number(t.originalPrice) : null,
+          unit: t.unit || this.form.unit || '斤',
+          stock: t.stock !== '' && t.stock != null ? Number(t.stock) : 999,
+          sort: t.sort !== '' && t.sort != null ? Number(t.sort) : idx * 10
+        }))
+      }
+
       try {
         if (this.id) {
-          this.form.id = this.id
-          await api.updateProduct(this.form)
+          payload.id = this.id
+          await api.updateProduct(payload)
         } else {
-          await api.addProduct(this.form)
+          await api.addProduct(payload)
         }
         uni.$emit('refreshProductList')
         uni.showToast({ title: '保存成功', icon: 'success' })
@@ -581,7 +760,7 @@ export default {
         }, 1000)
       } catch (e) {
         console.error(e)
-}
+      }
     },
     goBack() {
       uni.navigateBack()
@@ -625,6 +804,97 @@ export default {
   border-radius: 8rpx;
   font-size: 28rpx;
   box-sizing: border-box;
+}
+
+.form-input.disabled {
+  background-color: #f5f5f5;
+  color: #888;
+}
+
+.tier-section {
+  background: #fafafa;
+  padding: 20rpx;
+  border-radius: 12rpx;
+  border: 1rpx dashed #d9d9d9;
+}
+
+.tier-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.tier-card {
+  background: #fff;
+  border: 1rpx solid #e8e8e8;
+  border-radius: 10rpx;
+  padding: 20rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.03);
+}
+
+.tier-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+  padding-bottom: 12rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.tier-index-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #1890ff;
+}
+
+.tier-delete-btn {
+  font-size: 24rpx;
+  color: #ff4d4f;
+  cursor: pointer;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+  background: #fff1f0;
+}
+
+.tier-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16rpx;
+}
+
+.tier-grid-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.tier-sub-label {
+  font-size: 24rpx;
+  color: #666;
+  margin-bottom: 8rpx;
+}
+
+.tier-input {
+  height: 68rpx;
+  padding: 0 16rpx;
+  border: 1rpx solid #d9d9d9;
+  border-radius: 6rpx;
+  font-size: 26rpx;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.add-tier-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+  height: 76rpx;
+  border: 2rpx dashed #1890ff;
+  background: #e6f7ff;
+  color: #1890ff;
+  border-radius: 8rpx;
+  font-size: 26rpx;
+  cursor: pointer;
 }
 
 .form-textarea {

@@ -81,7 +81,7 @@
             </view>
             <text class="product-category">{{ item.categoryName }}</text>
             <view class="product-meta">
-              <text class="product-price">¥{{ item.price }}/{{ item.unit }}</text>
+              <text class="product-price">¥{{ item.price }} 起/{{ item.unit }}</text>
             </view>
           </view>
           <view class="product-actions" @click.stop>

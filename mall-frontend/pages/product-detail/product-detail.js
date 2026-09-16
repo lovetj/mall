@@ -14,6 +14,14 @@ Page(Object.assign({}, modalMixin, {
     swiperImages: [],
     // 标签列表（已格式化图片）
     tagList: [],
+    // 多规格价格层级列表
+    tierList: [],
+    selectedTier: null,
+    selectedTierId: '',
+    currentOriginalPrice: '',
+    currentUnit: '',
+    currentStock: 0,
+    currentImage: '',
     priceText: '0.00',
     salesText: '0',
     cartCount: 0,
@@ -46,18 +54,76 @@ Page(Object.assign({}, modalMixin, {
         this.setData({ product: null, loadState: 'empty' })
         return
       }
+      const swiperImages = this.buildImages(data)
+      const tierList = this.buildTiers(data.tierList)
+      const defaultTier = tierList.length > 0 ? tierList[0] : null
+      const selectedTierId = defaultTier ? defaultTier.id : ''
+      const priceVal = defaultTier ? defaultTier.price : data.price
+      const origPriceVal = defaultTier && defaultTier.originalPrice ? defaultTier.originalPrice : data.originalPrice
+      const unitVal = defaultTier && defaultTier.unit ? defaultTier.unit : data.unit
+      const stockVal = defaultTier && defaultTier.stock !== undefined ? defaultTier.stock : data.stock
+      const imgVal = (defaultTier && defaultTier.image) || (swiperImages.length ? swiperImages[0] : '')
+
       this.setData({
         product: data,
-        swiperImages: this.buildImages(data),
+        swiperImages,
         tagList: this.buildTags(data.tagList),
-        priceText: util.formatPrice(data.price),
+        tierList,
+        selectedTier: defaultTier,
+        selectedTierId,
+        priceText: util.formatPrice(priceVal),
+        currentOriginalPrice: origPriceVal ? util.formatPrice(origPriceVal) : '',
+        currentUnit: unitVal || '',
+        currentStock: Number(stockVal) || 0,
+        currentImage: imgVal,
         salesText: util.formatSales(data.sales),
         loadState: 'success'
       })
-      // 未填写描述时的兜底文案由 wxml 处理
     }).catch(() => {
       // 接口异常 / 超时 / 无数据：展示空态，不降级本地假数据
-      this.setData({ product: null, swiperImages: [], tagList: [], loadState: 'empty' })
+      this.setData({ product: null, swiperImages: [], tagList: [], tierList: [], loadState: 'empty' })
+    })
+  },
+
+  /** 格式化规格层级列表 */
+  buildTiers(list) {
+    if (!Array.isArray(list)) return []
+    return list
+      .filter((t) => t && t.status !== 0)
+      .map((t) => ({
+        ...t,
+        image: formatImageUrl(t.image),
+        priceText: util.formatPrice(t.price),
+        originalPriceText: t.originalPrice ? util.formatPrice(t.originalPrice) : ''
+      }))
+  },
+
+  /** 切换选择规格 */
+  onSelectTier(e) {
+    const id = e.currentTarget.dataset.id
+    if (!id || id === this.data.selectedTierId) return
+    const targetTier = this.data.tierList.find((t) => t.id === id)
+    if (!targetTier) return
+
+    const origPrice = targetTier.originalPrice || (this.data.product && this.data.product.originalPrice)
+    const unitVal = targetTier.unit || (this.data.product && this.data.product.unit) || ''
+    const stockVal = Number(targetTier.stock !== undefined ? targetTier.stock : (this.data.product && this.data.product.stock)) || 0
+    const imgVal = targetTier.image || (this.data.swiperImages.length ? this.data.swiperImages[0] : '')
+
+    let quantity = this.data.quantity
+    if (stockVal > 0 && quantity > stockVal) {
+      quantity = stockVal
+    }
+
+    this.setData({
+      selectedTier: targetTier,
+      selectedTierId: id,
+      priceText: targetTier.priceText || util.formatPrice(targetTier.price),
+      currentOriginalPrice: origPrice ? util.formatPrice(origPrice) : '',
+      currentUnit: unitVal,
+      currentStock: stockVal,
+      currentImage: imgVal,
+      quantity: quantity > 0 ? quantity : 1
     })
   },
 
@@ -182,7 +248,14 @@ Page(Object.assign({}, modalMixin, {
   },
 
   onIncrease() {
-    const max = Number(this.data.product && this.data.product.stock)
+    const tier = this.data.selectedTier
+    const product = this.data.product
+    let max = 999
+    if (tier && tier.stock !== undefined && tier.stock !== null) {
+      max = Number(tier.stock)
+    } else if (product && product.stock !== undefined && product.stock !== null) {
+      max = Number(product.stock)
+    }
     const limit = max > 0 ? max : 999
     if (this.data.quantity < limit) {
       this.setData({ quantity: this.data.quantity + 1 })
@@ -195,10 +268,20 @@ Page(Object.assign({}, modalMixin, {
   onConfirmQuantity() {
     const product = this.data.product
     if (!product) return
+    const tierList = this.data.tierList || []
+    let selectedTier = this.data.selectedTier
+    if (tierList.length > 0 && !selectedTier) {
+      selectedTier = tierList[0]
+      this.setData({ selectedTier, selectedTierId: selectedTier.id })
+    }
+
+    if (selectedTier && selectedTier.stock !== undefined && selectedTier.stock <= 0) {
+      util.toast('该规格已售罄')
+      return
+    }
+
     const quantity = this.data.quantity
-
-    cart.addToCart(product, quantity)
-
+    cart.addToCart(product, quantity, selectedTier)
     this.setData({ showQuantity: false })
     this.refreshCart()
     wx.showToast({ title: '已加入购物车', icon: 'success' })

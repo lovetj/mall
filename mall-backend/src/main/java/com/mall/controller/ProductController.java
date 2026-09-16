@@ -6,9 +6,11 @@ import com.mall.dto.ProductDTO;
 import com.mall.entity.Category;
 import com.mall.entity.Product;
 import com.mall.entity.ProductTag;
+import com.mall.entity.ProductTier;
 import com.mall.service.CategoryService;
 import com.mall.service.ProductService;
 import com.mall.service.ProductTagService;
+import com.mall.service.ProductTierService;
 import com.mall.util.UrlUtil;
 import com.mall.common.Result;
 import com.mall.dto.PageDTO;
@@ -34,6 +36,9 @@ public class ProductController {
 
     @Autowired
     private CategoryService categoryService;
+
+    @Autowired
+    private ProductTierService productTierService;
 
     @Autowired
     private UrlUtil urlUtil;
@@ -115,6 +120,11 @@ public class ProductController {
                     }
                 } catch (Exception ignored) {
                 }
+            }
+            List<ProductTier> tierList = productTierService.listByProductId(id);
+            if (tierList != null && !tierList.isEmpty()) {
+                urlUtil.resolveProductTiers(tierList);
+                product.setTierList(tierList);
             }
             urlUtil.resolveProduct(product);
         }

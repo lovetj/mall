@@ -18,7 +18,10 @@ public class OrderItem implements Serializable {
 
     private String productId;
 
-    /** 商品名称(下单时快照) */
+    private String tierId;
+
+    private String tierName;
+
     private String productName;
 
     /** 商品图片(下单时快照) */

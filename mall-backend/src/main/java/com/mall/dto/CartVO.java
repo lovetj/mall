@@ -13,6 +13,8 @@ public class CartVO implements Serializable {
     private String id;
     private String cartId;
     private String productId;
+    private String tierId;
+    private String tierName;
     private Integer quantity;
     private String name;
     private String image;

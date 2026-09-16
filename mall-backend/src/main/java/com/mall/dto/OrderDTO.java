@@ -37,6 +37,9 @@ public class OrderDTO {
     @Data
     public static class OrderItemDTO {
         private String productId;
+        private String tierId;
+        private String tierName;
+        private BigDecimal price;
         private Integer quantity;
     }
 }

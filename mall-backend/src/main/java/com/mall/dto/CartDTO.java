@@ -12,5 +12,7 @@ public class CartDTO implements Serializable {
     @NotNull(message = "商品ID不能为空")
     private String productId;
 
+    private String tierId;
+
     private Integer quantity;
 }

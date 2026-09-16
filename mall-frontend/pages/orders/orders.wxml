@@ -31,6 +31,9 @@
           <image class="g-img" src="{{g.image}}" mode="aspectFill" lazy-load></image>
           <view class="g-info">
             <view class="g-name ellipsis-2">{{g.name}}</view>
+            <view class="g-spec" wx:if="{{g.tierName}}">
+              <text class="spec-tag">{{g.tierName}}</text>
+            </view>
             <view class="g-bottom">
               <text class="price"><text class="price-symbol">¥</text>{{g.price}}</text>
               <text class="g-count">x{{g.count}}</text>

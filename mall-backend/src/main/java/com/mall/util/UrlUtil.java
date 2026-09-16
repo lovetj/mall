@@ -39,6 +39,9 @@ public class UrlUtil {
         if (StringUtils.hasText(product.getImages())) {
             product.setImages(resolveImages(product.getImages()));
         }
+        if (product.getTierList() != null) {
+            resolveProductTiers(product.getTierList());
+        }
     }
 
     /**
@@ -87,6 +90,15 @@ public class UrlUtil {
     public void resolveCartVO(CartVO vo) {
         if (vo == null) return;
         vo.setImage(resolve(vo.getImage()));
+    }
+
+    public void resolveProductTier(ProductTier tier) {
+        if (tier == null) return;
+        tier.setImage(resolve(tier.getImage()));
+    }
+
+    public void resolveProductTiers(List<ProductTier> list) {
+        if (list != null) list.forEach(this::resolveProductTier);
     }
 
     /**

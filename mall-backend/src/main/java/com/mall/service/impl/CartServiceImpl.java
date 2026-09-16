@@ -4,15 +4,18 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.mall.dto.CartDTO;
 import com.mall.dto.CartVO;
-import com.mall.service.CartService;
 import com.mall.entity.Cart;
 import com.mall.entity.Product;
+import com.mall.entity.ProductTier;
 import com.mall.mapper.CartMapper;
 import com.mall.mapper.ProductMapper;
+import com.mall.mapper.ProductTierMapper;
+import com.mall.service.CartService;
 import com.mall.util.UrlUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -26,6 +29,9 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
 
     @Autowired
     private ProductMapper productMapper;
+
+    @Autowired
+    private ProductTierMapper productTierMapper;
 
     @Autowired
     private UrlUtil urlUtil;
@@ -48,20 +54,34 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
 
         List<String> productIds = cartList.stream()
                 .map(Cart::getProductId)
+                .filter(Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());
 
-        List<Product> products = productMapper.selectBatchIds(productIds);
-        Map<String, Product> productMap = products.stream()
-                .collect(Collectors.toMap(Product::getId, p -> p, (k1, k2) -> k1));
+        Map<String, Product> productMap = productIds.isEmpty() ? Collections.emptyMap() :
+                productMapper.selectBatchIds(productIds).stream()
+                        .collect(Collectors.toMap(Product::getId, p -> p, (k1, k2) -> k1));
+
+        List<String> tierIds = cartList.stream()
+                .map(Cart::getTierId)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<String, ProductTier> tierMap = tierIds.isEmpty() ? Collections.emptyMap() :
+                productTierMapper.selectBatchIds(tierIds).stream()
+                        .collect(Collectors.toMap(ProductTier::getId, t -> t, (k1, k2) -> k1));
 
         List<CartVO> result = new ArrayList<>();
         for (Cart cart : cartList) {
             Product product = productMap.get(cart.getProductId());
+            ProductTier tier = StringUtils.hasText(cart.getTierId()) ? tierMap.get(cart.getTierId()) : null;
+
             CartVO vo = new CartVO();
             vo.setId(cart.getId());
             vo.setCartId(cart.getId());
             vo.setProductId(cart.getProductId());
+            vo.setTierId(cart.getTierId());
             vo.setQuantity(cart.getQuantity());
             vo.setCreateTime(cart.getCreateTime());
             vo.setSelected(true);
@@ -73,6 +93,25 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
                 vo.setUnit(product.getUnit());
                 vo.setStock(product.getStock());
                 vo.setStatus(product.getStatus());
+
+                if (tier != null) {
+                    vo.setTierName(tier.getName());
+                    if (tier.getPrice() != null) {
+                        vo.setPrice(tier.getPrice());
+                    }
+                    if (StringUtils.hasText(tier.getUnit())) {
+                        vo.setUnit(tier.getUnit());
+                    }
+                    if (tier.getStock() != null) {
+                        vo.setStock(tier.getStock());
+                    }
+                    if (StringUtils.hasText(tier.getImage())) {
+                        vo.setImage(tier.getImage());
+                    }
+                    if (tier.getStatus() != null && tier.getStatus() != 1) {
+                        vo.setStatus(0);
+                    }
+                }
             } else {
                 vo.setName("商品已下架或不存在");
                 vo.setStatus(0);
@@ -103,29 +142,64 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
             throw new RuntimeException("商品已下架");
         }
 
+        String targetTierId = dto.getTierId();
+        ProductTier tier = null;
+
+        if (StringUtils.hasText(targetTierId)) {
+            tier = productTierMapper.selectById(targetTierId);
+            if (tier == null || !dto.getProductId().equals(tier.getProductId())) {
+                throw new RuntimeException("商品规格不存在");
+            }
+            if (tier.getStatus() != null && tier.getStatus() != 1) {
+                throw new RuntimeException("该规格已下架");
+            }
+        } else {
+            List<ProductTier> tiers = productTierMapper.selectList(
+                    new LambdaQueryWrapper<ProductTier>()
+                            .eq(ProductTier::getProductId, dto.getProductId())
+                            .eq(ProductTier::getStatus, 1)
+                            .orderByAsc(ProductTier::getSort)
+                            .orderByAsc(ProductTier::getPrice)
+            );
+            if (!tiers.isEmpty()) {
+                tier = tiers.get(0);
+                targetTierId = tier.getId();
+            }
+        }
+
+        int availableStock = tier != null && tier.getStock() != null ? tier.getStock() :
+                (product.getStock() != null ? product.getStock() : 0);
+
         int addQuantity = (dto.getQuantity() != null && dto.getQuantity() > 0) ? dto.getQuantity() : 1;
 
-        Cart existCart = cartMapper.selectOne(
-                new LambdaQueryWrapper<Cart>()
-                        .eq(Cart::getUserId, userId)
-                        .eq(Cart::getProductId, dto.getProductId())
-        );
+        LambdaQueryWrapper<Cart> query = new LambdaQueryWrapper<Cart>()
+                .eq(Cart::getUserId, userId)
+                .eq(Cart::getProductId, dto.getProductId());
+
+        if (StringUtils.hasText(targetTierId)) {
+            query.eq(Cart::getTierId, targetTierId);
+        } else {
+            query.isNull(Cart::getTierId);
+        }
+
+        Cart existCart = cartMapper.selectOne(query);
 
         if (existCart != null) {
             int newQuantity = existCart.getQuantity() + addQuantity;
-            if (product.getStock() != null && newQuantity > product.getStock()) {
-                throw new RuntimeException("库存不足，当前库存: " + product.getStock());
+            if (newQuantity > availableStock) {
+                throw new RuntimeException("库存不足，当前库存: " + availableStock);
             }
             existCart.setQuantity(newQuantity);
             existCart.setUpdateTime(LocalDateTime.now());
             cartMapper.updateById(existCart);
         } else {
-            if (product.getStock() != null && addQuantity > product.getStock()) {
-                throw new RuntimeException("库存不足，当前库存: " + product.getStock());
+            if (addQuantity > availableStock) {
+                throw new RuntimeException("库存不足，当前库存: " + availableStock);
             }
             Cart cart = new Cart();
             cart.setUserId(userId);
             cart.setProductId(dto.getProductId());
+            cart.setTierId(targetTierId);
             cart.setQuantity(addQuantity);
             cart.setCreateTime(LocalDateTime.now());
             cart.setUpdateTime(LocalDateTime.now());
@@ -135,56 +209,61 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateQuantity(String userId, String productId, Integer quantity) {
+    public void updateQuantity(String userId, String idOrProductId, Integer quantity) {
         if (userId == null) {
             throw new RuntimeException("用户未登录");
         }
-        if (productId == null) {
-            throw new RuntimeException("商品ID不能为空");
+        if (idOrProductId == null) {
+            throw new RuntimeException("商品或购物车项标识不能为空");
         }
 
         if (quantity == null || quantity <= 0) {
-            deleteCartItem(userId, productId);
+            deleteCartItem(userId, idOrProductId);
             return;
         }
 
-        Product product = productMapper.selectById(productId);
-        if (product == null) {
-            throw new RuntimeException("商品不存在");
-        }
-        if (product.getStock() != null && quantity > product.getStock()) {
-            throw new RuntimeException("库存不足，当前库存: " + product.getStock());
-        }
-
-        Cart existCart = cartMapper.selectOne(
+        Cart targetCart = cartMapper.selectOne(
                 new LambdaQueryWrapper<Cart>()
                         .eq(Cart::getUserId, userId)
-                        .eq(Cart::getProductId, productId)
+                        .and(w -> w.eq(Cart::getId, idOrProductId)
+                                .or().eq(Cart::getTierId, idOrProductId)
+                                .or().eq(Cart::getProductId, idOrProductId))
         );
 
-        if (existCart != null) {
-            existCart.setQuantity(quantity);
-            existCart.setUpdateTime(LocalDateTime.now());
-            cartMapper.updateById(existCart);
-        } else {
-            Cart cart = new Cart();
-            cart.setUserId(userId);
-            cart.setProductId(productId);
-            cart.setQuantity(quantity);
-            cart.setCreateTime(LocalDateTime.now());
-            cart.setUpdateTime(LocalDateTime.now());
-            cartMapper.insert(cart);
+        if (targetCart == null) {
+            throw new RuntimeException("购物车项不存在");
         }
+
+        int availableStock = 999999;
+        if (StringUtils.hasText(targetCart.getTierId())) {
+            ProductTier tier = productTierMapper.selectById(targetCart.getTierId());
+            if (tier != null && tier.getStock() != null) {
+                availableStock = tier.getStock();
+            }
+        } else if (StringUtils.hasText(targetCart.getProductId())) {
+            Product product = productMapper.selectById(targetCart.getProductId());
+            if (product != null && product.getStock() != null) {
+                availableStock = product.getStock();
+            }
+        }
+
+        if (quantity > availableStock) {
+            throw new RuntimeException("库存不足，当前库存: " + availableStock);
+        }
+
+        targetCart.setQuantity(quantity);
+        targetCart.setUpdateTime(LocalDateTime.now());
+        cartMapper.updateById(targetCart);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void changeQuantity(String userId, String productId, Integer delta) {
+    public void changeQuantity(String userId, String idOrProductId, Integer delta) {
         if (userId == null) {
             throw new RuntimeException("用户未登录");
         }
-        if (productId == null) {
-            throw new RuntimeException("商品ID不能为空");
+        if (idOrProductId == null) {
+            throw new RuntimeException("商品或购物车项标识不能为空");
         }
         if (delta == null || delta == 0) {
             return;
@@ -193,7 +272,9 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
         Cart existCart = cartMapper.selectOne(
                 new LambdaQueryWrapper<Cart>()
                         .eq(Cart::getUserId, userId)
-                        .eq(Cart::getProductId, productId)
+                        .and(w -> w.eq(Cart::getId, idOrProductId)
+                                .or().eq(Cart::getTierId, idOrProductId)
+                                .or().eq(Cart::getProductId, idOrProductId))
         );
 
         int currentQty = existCart != null ? existCart.getQuantity() : 0;
@@ -204,23 +285,25 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
                 cartMapper.deleteById(existCart.getId());
             }
         } else {
-            updateQuantity(userId, productId, targetQty);
+            updateQuantity(userId, existCart != null ? existCart.getId() : idOrProductId, targetQty);
         }
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void deleteCartItem(String userId, String productId) {
+    public void deleteCartItem(String userId, String idOrProductId) {
         if (userId == null) {
             throw new RuntimeException("用户未登录");
         }
-        if (productId == null) {
+        if (idOrProductId == null) {
             return;
         }
         cartMapper.delete(
                 new LambdaQueryWrapper<Cart>()
                         .eq(Cart::getUserId, userId)
-                        .eq(Cart::getProductId, productId)
+                        .and(w -> w.eq(Cart::getId, idOrProductId)
+                                .or().eq(Cart::getTierId, idOrProductId)
+                                .or().eq(Cart::getProductId, idOrProductId))
         );
     }
 
@@ -258,8 +341,7 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
             return 0;
         }
         List<Cart> cartList = cartMapper.selectList(
-                new LambdaQueryWrapper<Cart>()
-                        .eq(Cart::getUserId, userId)
+                new LambdaQueryWrapper<Cart>().eq(Cart::getUserId, userId)
         );
         return cartList.stream().mapToInt(Cart::getQuantity).sum();
     }

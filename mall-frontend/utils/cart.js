@@ -32,17 +32,23 @@ async function syncFromRemote() {
       const localCart = getCart()
       const checkedMap = {}
       localCart.forEach((item) => {
-        checkedMap[item.id || item.productId] = item.checked
+        const key = item.id || `${item.productId}_${item.tierId || ''}`
+        checkedMap[key] = item.checked
       })
-      const merged = remoteList.map((item) => ({
-        id: item.id,
-        productId: item.productId,
-        name: item.productName || item.name || '',
-        price: item.price,
-        image: api.formatImageUrl(item.productImage || item.image),
-        count: item.quantity || item.count || 1,
-        checked: checkedMap[item.id] !== undefined ? checkedMap[item.id] : true
-      }))
+      const merged = remoteList.map((item) => {
+        const key = item.id || `${item.productId}_${item.tierId || ''}`
+        return {
+          id: item.id,
+          productId: item.productId,
+          tierId: item.tierId || '',
+          tierName: item.tierName || '默认规格',
+          name: item.productName || item.name || '',
+          price: item.price,
+          image: api.formatImageUrl(item.productImage || item.image),
+          count: item.quantity || item.count || 1,
+          checked: checkedMap[key] !== undefined ? checkedMap[key] : true
+        }
+      })
       saveCart(merged)
       return merged
     }
@@ -53,20 +59,35 @@ async function syncFromRemote() {
 }
 
 /** 加入购物车，已存在则数量累加 */
-function addToCart(goods, count = 1) {
+function addToCart(goods, count = 1, tier = null) {
   const list = getCart()
   const pId = goods.id || goods.productId
-  const index = list.findIndex((item) => item.id === pId || item.productId === pId)
+  const tierId = tier ? tier.id : (goods.tierId || '')
+  const tierName = tier ? tier.name : (goods.tierName || '')
+  const price = tier && tier.price != null ? tier.price : goods.price
+  const image = tier && tier.image ? api.formatImageUrl(tier.image) : api.formatImageUrl(goods.image)
+
+  const index = list.findIndex((item) => {
+    if (tierId) {
+      return (item.productId === pId || item.id === pId) && item.tierId === tierId
+    }
+    return item.id === pId || item.productId === pId
+  })
+
   if (index > -1) {
     list[index].count += count
     list[index].checked = true
+    list[index].price = price
+    if (tierName) list[index].tierName = tierName
   } else {
     list.push({
       id: goods.id || pId,
       productId: goods.productId || goods.id || pId,
+      tierId: tierId || '',
+      tierName: tierName || '默认规格',
       name: goods.name,
-      price: goods.price,
-      image: api.formatImageUrl(goods.image),
+      price: price,
+      image: image,
       count,
       checked: true
     })
@@ -77,6 +98,7 @@ function addToCart(goods, count = 1) {
   if (auth.isLogin()) {
     api.addToCart({
       productId: pId,
+      tierId: tierId || undefined,
       quantity: count
     }).catch(() => {})
   }
@@ -85,9 +107,13 @@ function addToCart(goods, count = 1) {
 }
 
 /** 更新数量（最小 1） */
-function updateCount(id, count) {
+function updateCount(id, count, tierId) {
   const list = getCart()
-  const index = list.findIndex((item) => item.id === id || item.productId === id)
+  const index = list.findIndex((item) => {
+    if (item.id === id) return true
+    if (tierId) return item.productId === id && item.tierId === tierId
+    return item.productId === id
+  })
   if (index > -1) {
     const targetCount = Math.max(1, count)
     list[index].count = targetCount
@@ -95,7 +121,9 @@ function updateCount(id, count) {
 
     if (auth.isLogin()) {
       api.updateCartQuantity({
-        productId: list[index].productId || list[index].id,
+        cartId: list[index].id,
+        productId: list[index].productId,
+        tierId: list[index].tierId,
         quantity: targetCount
       }).catch(() => {})
     }
