@@ -17,7 +17,7 @@ import java.util.List;
 public class AddressServiceImpl extends ServiceImpl<AddressMapper, Address> implements AddressService {
 
     @Override
-    public List<Address> listByUserId(Long userId) {
+    public List<Address> listByUserId(String userId) {
         return list(new LambdaQueryWrapper<Address>()
                 .eq(Address::getUserId, userId)
                 .orderByDesc(Address::getIsDefault)
@@ -25,14 +25,14 @@ public class AddressServiceImpl extends ServiceImpl<AddressMapper, Address> impl
     }
 
     @Override
-    public Address getDetail(Long userId, Long id) {
+    public Address getDetail(String userId, String id) {
         return getOne(new LambdaQueryWrapper<Address>()
                 .eq(Address::getId, id)
                 .eq(Address::getUserId, userId));
     }
 
     @Override
-    public Address getDefaultAddress(Long userId) {
+    public Address getDefaultAddress(String userId) {
         Address defaultAddress = getOne(new LambdaQueryWrapper<Address>()
                 .eq(Address::getUserId, userId)
                 .eq(Address::getIsDefault, 1)
@@ -48,7 +48,7 @@ public class AddressServiceImpl extends ServiceImpl<AddressMapper, Address> impl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void addAddress(Long userId, AddressDTO dto) {
+    public void addAddress(String userId, AddressDTO dto) {
         long count = count(new LambdaQueryWrapper<Address>().eq(Address::getUserId, userId));
 
         Address address = new Address();
@@ -76,7 +76,7 @@ public class AddressServiceImpl extends ServiceImpl<AddressMapper, Address> impl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateAddress(Long userId, AddressDTO dto) {
+    public void updateAddress(String userId, AddressDTO dto) {
         if (dto.getId() == null) {
             throw new RuntimeException("地址ID不能为空");
         }
@@ -112,7 +112,7 @@ public class AddressServiceImpl extends ServiceImpl<AddressMapper, Address> impl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void deleteAddress(Long userId, Long id) {
+    public void deleteAddress(String userId, String id) {
         Address existing = getDetail(userId, id);
         if (existing == null) {
             return;
@@ -134,7 +134,7 @@ public class AddressServiceImpl extends ServiceImpl<AddressMapper, Address> impl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void setDefaultAddress(Long userId, Long id) {
+    public void setDefaultAddress(String userId, String id) {
         Address address = getDetail(userId, id);
         if (address == null) {
             throw new RuntimeException("收货地址不存在");

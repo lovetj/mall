@@ -27,7 +27,7 @@ public class OrderDTO {
     private String receiverAddress;
 
     /** 关联地址ID(可选) */
-    private Long addressId;
+    private String addressId;
 
     /** 快递费(可选, 默认0) */
     private BigDecimal freightAmount;
@@ -36,7 +36,7 @@ public class OrderDTO {
 
     @Data
     public static class OrderItemDTO {
-        private Long productId;
+        private String productId;
         private Integer quantity;
     }
 }

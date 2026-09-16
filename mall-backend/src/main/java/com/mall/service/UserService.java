@@ -30,11 +30,11 @@ public interface UserService extends IService<User> {
 
     void updateUser(UserDTO dto);
 
-    void deleteUser(Long id);
+    void deleteUser(String id);
 
-    void deleteBatch(List<Long> ids);
+    void deleteBatch(List<String> ids);
 
-    void updateStatus(Long id, Integer status);
+    void updateStatus(String id, Integer status);
 
-    void updateStatusBatch(List<Long> ids, Integer status);
+    void updateStatusBatch(List<String> ids, Integer status);
 }

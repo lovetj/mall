@@ -22,13 +22,13 @@ public class CartController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    private Long resolveUserId(String authorization, Long headerUserId) {
+    private String resolveUserId(String authorization, String headerUserId) {
         if (authorization != null && !authorization.trim().isEmpty()) {
             if (jwtUtil.validateToken(authorization)) {
                 return jwtUtil.getUserId(authorization);
             }
         }
-        if (headerUserId != null && headerUserId > 0) {
+        if (headerUserId != null && !headerUserId.trim().isEmpty()) {
             return headerUserId;
         }
         return null;
@@ -36,8 +36,8 @@ public class CartController {
 
     @GetMapping("/list")
     public Result<List<CartVO>> list(@RequestHeader(value = "Authorization", required = false) String authorization,
-                                     @RequestHeader(value = "userId", required = false) Long headerUserId) {
-        Long userId = resolveUserId(authorization, headerUserId);
+                                     @RequestHeader(value = "userId", required = false) String headerUserId) {
+        String userId = resolveUserId(authorization, headerUserId);
         if (userId == null) {
             return Result.error(401, "用户未登录，请先登录");
         }
@@ -46,8 +46,8 @@ public class CartController {
 
     @GetMapping("/count")
     public Result<Integer> count(@RequestHeader(value = "Authorization", required = false) String authorization,
-                                 @RequestHeader(value = "userId", required = false) Long headerUserId) {
-        Long userId = resolveUserId(authorization, headerUserId);
+                                 @RequestHeader(value = "userId", required = false) String headerUserId) {
+        String userId = resolveUserId(authorization, headerUserId);
         if (userId == null) {
             return Result.success(0);
         }
@@ -57,8 +57,8 @@ public class CartController {
     @PostMapping("/add")
     public Result<Void> add(@Valid @RequestBody CartDTO dto,
                             @RequestHeader(value = "Authorization", required = false) String authorization,
-                            @RequestHeader(value = "userId", required = false) Long headerUserId) {
-        Long userId = resolveUserId(authorization, headerUserId);
+                            @RequestHeader(value = "userId", required = false) String headerUserId) {
+        String userId = resolveUserId(authorization, headerUserId);
         if (userId == null) {
             return Result.error(401, "用户未登录，请先登录");
         }
@@ -69,8 +69,8 @@ public class CartController {
     @PostMapping("/update")
     public Result<Void> update(@RequestBody Map<String, Object> params,
                                @RequestHeader(value = "Authorization", required = false) String authorization,
-                               @RequestHeader(value = "userId", required = false) Long headerUserId) {
-        Long userId = resolveUserId(authorization, headerUserId);
+                               @RequestHeader(value = "userId", required = false) String headerUserId) {
+        String userId = resolveUserId(authorization, headerUserId);
         if (userId == null) {
             return Result.error(401, "用户未登录，请先登录");
         }
@@ -81,7 +81,7 @@ public class CartController {
             return Result.error("参数不完整");
         }
 
-        Long productId = Long.valueOf(productIdObj.toString());
+        String productId = String.valueOf(productIdObj);
         Integer quantity = Integer.valueOf(quantityObj.toString());
 
         cartService.updateQuantity(userId, productId, quantity);
@@ -91,8 +91,8 @@ public class CartController {
     @PostMapping("/change")
     public Result<Void> change(@RequestBody Map<String, Object> params,
                                @RequestHeader(value = "Authorization", required = false) String authorization,
-                               @RequestHeader(value = "userId", required = false) Long headerUserId) {
-        Long userId = resolveUserId(authorization, headerUserId);
+                               @RequestHeader(value = "userId", required = false) String headerUserId) {
+        String userId = resolveUserId(authorization, headerUserId);
         if (userId == null) {
             return Result.error(401, "用户未登录，请先登录");
         }
@@ -103,7 +103,7 @@ public class CartController {
             return Result.error("参数不完整");
         }
 
-        Long productId = Long.valueOf(productIdObj.toString());
+        String productId = String.valueOf(productIdObj);
         Integer delta = Integer.valueOf(deltaObj.toString());
 
         cartService.changeQuantity(userId, productId, delta);
@@ -111,10 +111,10 @@ public class CartController {
     }
 
     @DeleteMapping("/product/{productId}")
-    public Result<Void> deleteByProduct(@PathVariable Long productId,
+    public Result<Void> deleteByProduct(@PathVariable String productId,
                                         @RequestHeader(value = "Authorization", required = false) String authorization,
-                                        @RequestHeader(value = "userId", required = false) Long headerUserId) {
-        Long userId = resolveUserId(authorization, headerUserId);
+                                        @RequestHeader(value = "userId", required = false) String headerUserId) {
+        String userId = resolveUserId(authorization, headerUserId);
         if (userId == null) {
             return Result.error(401, "用户未登录，请先登录");
         }
@@ -123,10 +123,10 @@ public class CartController {
     }
 
     @DeleteMapping("/{id}")
-    public Result<Void> deleteById(@PathVariable Long id,
+    public Result<Void> deleteById(@PathVariable String id,
                                    @RequestHeader(value = "Authorization", required = false) String authorization,
-                                   @RequestHeader(value = "userId", required = false) Long headerUserId) {
-        Long userId = resolveUserId(authorization, headerUserId);
+                                   @RequestHeader(value = "userId", required = false) String headerUserId) {
+        String userId = resolveUserId(authorization, headerUserId);
         if (userId == null) {
             return Result.error(401, "用户未登录，请先登录");
         }
@@ -136,8 +136,8 @@ public class CartController {
 
     @DeleteMapping("/clear")
     public Result<Void> clear(@RequestHeader(value = "Authorization", required = false) String authorization,
-                              @RequestHeader(value = "userId", required = false) Long headerUserId) {
-        Long userId = resolveUserId(authorization, headerUserId);
+                              @RequestHeader(value = "userId", required = false) String headerUserId) {
+        String userId = resolveUserId(authorization, headerUserId);
         if (userId == null) {
             return Result.error(401, "用户未登录，请先登录");
         }

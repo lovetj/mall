@@ -9,19 +9,19 @@ import java.util.List;
 
 public interface CartService extends IService<Cart> {
 
-    List<CartVO> getCartList(Long userId);
+    List<CartVO> getCartList(String userId);
 
-    void addToCart(Long userId, CartDTO dto);
+    void addToCart(String userId, CartDTO dto);
 
-    void updateQuantity(Long userId, Long productId, Integer quantity);
+    void updateQuantity(String userId, String productId, Integer quantity);
 
-    void changeQuantity(Long userId, Long productId, Integer delta);
+    void changeQuantity(String userId, String productId, Integer delta);
 
-    void deleteCartItem(Long userId, Long productId);
+    void deleteCartItem(String userId, String productId);
 
-    void deleteById(Long userId, Long cartId);
+    void deleteById(String userId, String cartId);
 
-    void clearCart(Long userId);
+    void clearCart(String userId);
 
-    Integer getCartCount(Long userId);
+    Integer getCartCount(String userId);
 }

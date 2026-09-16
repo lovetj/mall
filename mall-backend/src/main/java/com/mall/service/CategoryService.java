@@ -17,12 +17,12 @@ public interface CategoryService extends IService<Category> {
 
     void updateCategory(CategoryDTO dto);
 
-    void deleteCategory(Long id);
+    void deleteCategory(String id);
 
-    void deleteBatch(List<Long> ids);
+    void deleteBatch(List<String> ids);
 
-    void updateStatus(Long id, Integer status);
+    void updateStatus(String id, Integer status);
 
-    void updateStatusBatch(List<Long> ids, Integer status);
+    void updateStatusBatch(List<String> ids, Integer status);
 }
 

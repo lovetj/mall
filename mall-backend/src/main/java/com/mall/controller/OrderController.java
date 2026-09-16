@@ -25,14 +25,14 @@ public class OrderController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    private Long resolveUserId(String authorization, Long headerUserId) {
+    private String resolveUserId(String authorization, String headerUserId) {
         if (authorization != null && !authorization.trim().isEmpty()) {
             if (jwtUtil.validateToken(authorization)) {
                 return jwtUtil.getUserId(authorization);
             }
         }
-        if (headerUserId != null && headerUserId > 0) {
-            return headerUserId;
+        if (headerUserId != null && !headerUserId.trim().isEmpty()) {
+            return headerUserId.trim();
         }
         return null;
     }
@@ -41,8 +41,8 @@ public class OrderController {
     @PostMapping("/checkout")
     public Result<OrderVO> checkout(@Valid @RequestBody OrderCheckoutDTO dto,
                                     @RequestHeader(value = "Authorization", required = false) String authorization,
-                                    @RequestHeader(value = "userId", required = false) Long headerUserId) {
-        Long userId = resolveUserId(authorization, headerUserId);
+                                    @RequestHeader(value = "userId", required = false) String headerUserId) {
+        String userId = resolveUserId(authorization, headerUserId);
         if (userId == null) {
             return Result.error(401, "用户未登录，请先登录");
         }
@@ -54,8 +54,8 @@ public class OrderController {
     @PostMapping("/create")
     public Result<String> create(@Valid @RequestBody OrderDTO dto,
                                  @RequestHeader(value = "Authorization", required = false) String authorization,
-                                 @RequestHeader(value = "userId", required = false) Long headerUserId) {
-        Long userId = resolveUserId(authorization, headerUserId);
+                                 @RequestHeader(value = "userId", required = false) String headerUserId) {
+        String userId = resolveUserId(authorization, headerUserId);
         if (userId == null) {
             return Result.error(401, "用户未登录，请先登录");
         }
@@ -70,8 +70,8 @@ public class OrderController {
             @RequestParam(defaultValue = "10") Integer pageSize,
             @RequestParam(required = false) Integer status,
             @RequestHeader(value = "Authorization", required = false) String authorization,
-            @RequestHeader(value = "userId", required = false) Long headerUserId) {
-        Long userId = resolveUserId(authorization, headerUserId);
+            @RequestHeader(value = "userId", required = false) String headerUserId) {
+        String userId = resolveUserId(authorization, headerUserId);
         if (userId == null) {
             return Result.error(401, "用户未登录，请先登录");
         }
@@ -85,8 +85,8 @@ public class OrderController {
     @GetMapping("/counts")
     public Result<Map<String, Long>> counts(
             @RequestHeader(value = "Authorization", required = false) String authorization,
-            @RequestHeader(value = "userId", required = false) Long headerUserId) {
-        Long userId = resolveUserId(authorization, headerUserId);
+            @RequestHeader(value = "userId", required = false) String headerUserId) {
+        String userId = resolveUserId(authorization, headerUserId);
         if (userId == null) {
             return Result.error(401, "用户未登录，请先登录");
         }
@@ -103,10 +103,10 @@ public class OrderController {
 
     /** 订单详情(含订单项) */
     @GetMapping("/{id}")
-    public Result<OrderVO> detail(@PathVariable Long id,
+    public Result<OrderVO> detail(@PathVariable String id,
                                   @RequestHeader(value = "Authorization", required = false) String authorization,
-                                  @RequestHeader(value = "userId", required = false) Long headerUserId) {
-        Long userId = resolveUserId(authorization, headerUserId);
+                                  @RequestHeader(value = "userId", required = false) String headerUserId) {
+        String userId = resolveUserId(authorization, headerUserId);
         if (userId == null) {
             return Result.error(401, "用户未登录，请先登录");
         }

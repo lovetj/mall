@@ -29,7 +29,7 @@ public class JwtUtil {
         this.key = Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-    public String generateToken(Long userId, String username) {
+    public String generateToken(String userId, String username) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         claims.put("username", username);
@@ -65,16 +65,13 @@ public class JwtUtil {
         }
     }
 
-    public Long getUserId(String token) {
+    public String getUserId(String token) {
         Claims claims = parseToken(token);
         Object userIdObj = claims.get("userId");
-        if (userIdObj instanceof Number) {
-            return ((Number) userIdObj).longValue();
+        if (userIdObj != null) {
+            return String.valueOf(userIdObj);
         }
-        if (userIdObj instanceof String) {
-            return Long.parseLong((String) userIdObj);
-        }
-        return claims.get("userId", Long.class);
+        return claims.get("userId", String.class);
     }
 
     public String getUsername(String token) {

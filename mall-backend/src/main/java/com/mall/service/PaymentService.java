@@ -16,7 +16,7 @@ public interface PaymentService {
      * @param clientIp  客户端IP
      * @return 支付响应(含前端需要拉起的参数)
      */
-    PayResponseDTO createPayment(PayRequestDTO request, Long userId, String clientIp);
+    PayResponseDTO createPayment(PayRequestDTO request, String userId, String clientIp);
 
     /**
      * 处理微信支付回调通知
@@ -29,11 +29,11 @@ public interface PaymentService {
      *
      * @param paymentNo 本系统支付流水号
      */
-    PayResponseDTO queryPaymentStatus(String paymentNo, Long userId);
+    PayResponseDTO queryPaymentStatus(String paymentNo, String userId);
 
     /**
      * Mock支付完成(前端点"已付款"时调用, 把支付流水从"待支付"变"已支付", 同时变更订单状态)
      * 仅在 mock.enabled=true 时生效
      */
-    PayResponseDTO mockPaySuccess(String paymentNo, Long userId);
+    PayResponseDTO mockPaySuccess(String paymentNo, String userId);
 }

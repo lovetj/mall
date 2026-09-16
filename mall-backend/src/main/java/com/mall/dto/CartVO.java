@@ -10,9 +10,9 @@ import java.time.LocalDateTime;
 public class CartVO implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private Long id;
-    private Long cartId;
-    private Long productId;
+    private String id;
+    private String cartId;
+    private String productId;
     private Integer quantity;
     private String name;
     private String image;

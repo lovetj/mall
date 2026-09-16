@@ -11,12 +11,12 @@ import java.math.BigDecimal;
 public class OrderItem implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @TableId(value = "id", type = IdType.AUTO)
-    private Long id;
+    @TableId(value = "id", type = IdType.ASSIGN_UUID)
+    private String id;
 
-    private Long orderId;
+    private String orderId;
 
-    private Long productId;
+    private String productId;
 
     /** 商品名称(下单时快照) */
     private String productName;

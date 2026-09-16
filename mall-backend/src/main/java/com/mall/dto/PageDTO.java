@@ -7,7 +7,7 @@ public class PageDTO {
     private Integer pageNum = 1;
     private Integer pageSize = 10;
     private String keyword;
-    private Long categoryId;
+    private String categoryId;
     private Integer status;
     private Integer isHotselling;
 }

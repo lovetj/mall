@@ -21,13 +21,13 @@ public class AddressController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    private Long resolveUserId(String authorization, Long headerUserId) {
+    private String resolveUserId(String authorization, String headerUserId) {
         if (authorization != null && !authorization.trim().isEmpty()) {
             if (jwtUtil.validateToken(authorization)) {
                 return jwtUtil.getUserId(authorization);
             }
         }
-        if (headerUserId != null && headerUserId > 0) {
+        if (headerUserId != null && !headerUserId.trim().isEmpty()) {
             return headerUserId;
         }
         return null;
@@ -35,8 +35,8 @@ public class AddressController {
 
     @GetMapping("/list")
     public Result<List<Address>> list(@RequestHeader(value = "Authorization", required = false) String authorization,
-                                      @RequestHeader(value = "userId", required = false) Long headerUserId) {
-        Long userId = resolveUserId(authorization, headerUserId);
+                                      @RequestHeader(value = "userId", required = false) String headerUserId) {
+        String userId = resolveUserId(authorization, headerUserId);
         if (userId == null) {
             return Result.error(401, "用户未登录，请先登录");
         }
@@ -45,8 +45,8 @@ public class AddressController {
 
     @GetMapping("/default")
     public Result<Address> getDefault(@RequestHeader(value = "Authorization", required = false) String authorization,
-                                      @RequestHeader(value = "userId", required = false) Long headerUserId) {
-        Long userId = resolveUserId(authorization, headerUserId);
+                                      @RequestHeader(value = "userId", required = false) String headerUserId) {
+        String userId = resolveUserId(authorization, headerUserId);
         if (userId == null) {
             return Result.error(401, "用户未登录，请先登录");
         }
@@ -54,10 +54,10 @@ public class AddressController {
     }
 
     @GetMapping("/{id}")
-    public Result<Address> detail(@PathVariable Long id,
+    public Result<Address> detail(@PathVariable String id,
                                   @RequestHeader(value = "Authorization", required = false) String authorization,
-                                  @RequestHeader(value = "userId", required = false) Long headerUserId) {
-        Long userId = resolveUserId(authorization, headerUserId);
+                                  @RequestHeader(value = "userId", required = false) String headerUserId) {
+        String userId = resolveUserId(authorization, headerUserId);
         if (userId == null) {
             return Result.error(401, "用户未登录，请先登录");
         }
@@ -71,8 +71,8 @@ public class AddressController {
     @PostMapping
     public Result<Void> add(@Valid @RequestBody AddressDTO dto,
                             @RequestHeader(value = "Authorization", required = false) String authorization,
-                            @RequestHeader(value = "userId", required = false) Long headerUserId) {
-        Long userId = resolveUserId(authorization, headerUserId);
+                            @RequestHeader(value = "userId", required = false) String headerUserId) {
+        String userId = resolveUserId(authorization, headerUserId);
         if (userId == null) {
             return Result.error(401, "用户未登录，请先登录");
         }
@@ -83,8 +83,8 @@ public class AddressController {
     @PutMapping
     public Result<Void> update(@Valid @RequestBody AddressDTO dto,
                                @RequestHeader(value = "Authorization", required = false) String authorization,
-                               @RequestHeader(value = "userId", required = false) Long headerUserId) {
-        Long userId = resolveUserId(authorization, headerUserId);
+                               @RequestHeader(value = "userId", required = false) String headerUserId) {
+        String userId = resolveUserId(authorization, headerUserId);
         if (userId == null) {
             return Result.error(401, "用户未登录，请先登录");
         }
@@ -93,10 +93,10 @@ public class AddressController {
     }
 
     @DeleteMapping("/{id}")
-    public Result<Void> delete(@PathVariable Long id,
+    public Result<Void> delete(@PathVariable String id,
                                @RequestHeader(value = "Authorization", required = false) String authorization,
-                               @RequestHeader(value = "userId", required = false) Long headerUserId) {
-        Long userId = resolveUserId(authorization, headerUserId);
+                               @RequestHeader(value = "userId", required = false) String headerUserId) {
+        String userId = resolveUserId(authorization, headerUserId);
         if (userId == null) {
             return Result.error(401, "用户未登录，请先登录");
         }
@@ -105,10 +105,10 @@ public class AddressController {
     }
 
     @PostMapping("/default/{id}")
-    public Result<Void> setDefault(@PathVariable Long id,
+    public Result<Void> setDefault(@PathVariable String id,
                                    @RequestHeader(value = "Authorization", required = false) String authorization,
-                                   @RequestHeader(value = "userId", required = false) Long headerUserId) {
-        Long userId = resolveUserId(authorization, headerUserId);
+                                   @RequestHeader(value = "userId", required = false) String headerUserId) {
+        String userId = resolveUserId(authorization, headerUserId);
         if (userId == null) {
             return Result.error(401, "用户未登录，请先登录");
         }

@@ -11,8 +11,8 @@ SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS `address`;
 
 CREATE TABLE `address` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `user_id` bigint NOT NULL COMMENT '用户ID',
+  `id` varchar(128) NOT NULL COMMENT '主键ID',
+  `user_id` varchar(128) NOT NULL COMMENT '用户ID',
   `receiver_name` varchar(20) NOT NULL COMMENT '收货人(不超过20个字)',
   `phone` varchar(20) NOT NULL COMMENT '手机号码',
   `detail_address` varchar(255) NOT NULL COMMENT '详细地址(小区/学校/大厦等)',
@@ -33,7 +33,7 @@ CREATE TABLE `address` (
 DROP TABLE IF EXISTS `admin`;
 
 CREATE TABLE `admin` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `id` varchar(128) NOT NULL COMMENT '主键ID',
   `username` varchar(50) NOT NULL COMMENT '用户名',
   `password` varchar(100) NOT NULL COMMENT '密码',
   `real_name` varchar(50) DEFAULT NULL COMMENT '真实姓名',
@@ -45,12 +45,12 @@ CREATE TABLE `admin` (
   UNIQUE KEY `uk_username` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='管理员表';
 
-INSERT INTO `admin` (`id`, `username`, `password`, `real_name`, `avatar`, `status`, `create_time`, `update_time`) VALUES (1, 'admin', '$2a$10$f3o1ECZ6a.VZhezkmhl46uBpGmnPNmLvsRDIdjkJ/a/oNodOZJu0S', '管理员', NULL, 1, '2026-09-14 20:39:46', '2026-09-14 20:39:46');
+INSERT INTO `admin` (`id`, `username`, `password`, `real_name`, `avatar`, `status`, `create_time`, `update_time`) VALUES ('1', 'admin', '$2a$10$f3o1ECZ6a.VZhezkmhl46uBpGmnPNmLvsRDIdjkJ/a/oNodOZJu0S', '管理员', NULL, 1, '2026-09-14 20:39:46', '2026-09-14 20:39:46');
 
 DROP TABLE IF EXISTS `banner`;
 
 CREATE TABLE `banner` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `id` varchar(128) NOT NULL COMMENT '主键ID',
   `title` varchar(100) DEFAULT NULL COMMENT '标题',
   `image` varchar(255) NOT NULL COMMENT '图片',
   `link` varchar(255) DEFAULT NULL COMMENT '跳转链接',
@@ -60,14 +60,14 @@ CREATE TABLE `banner` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='轮播图表';
 
-INSERT INTO `banner` (`id`, `title`, `image`, `link`, `sort`, `status`, `create_time`) VALUES (1, '新鲜农产品', '/banner/20260914_4f8f61ecf407493eb01dced0edb495e7.webp', 'https://www.baidu.com', 1, 1, '2026-09-14 20:39:46'), (2, '', '/banner/20260914_2b05ccad38ef49a48bdc15cc0a5aa8ad.webp', '', 2, 1, '2026-09-14 20:39:46'), (3, '城乡物流', '/banner/20260914_d8766355e5124370b4ff88a1c7c494e2.webp', '', 3, 1, '2026-09-14 20:39:46');
+INSERT INTO `banner` (`id`, `title`, `image`, `link`, `sort`, `status`, `create_time`) VALUES ('1', '新鲜农产品', '/banner/20260914_4f8f61ecf407493eb01dced0edb495e7.webp', 'https://www.baidu.com', 1, 1, '2026-09-14 20:39:46'), ('2', '', '/banner/20260914_2b05ccad38ef49a48bdc15cc0a5aa8ad.webp', '', 2, 1, '2026-09-14 20:39:46'), ('3', '城乡物流', '/banner/20260914_d8766355e5124370b4ff88a1c7c494e2.webp', '', 3, 1, '2026-09-14 20:39:46');
 
 DROP TABLE IF EXISTS `cart`;
 
 CREATE TABLE `cart` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `user_id` bigint NOT NULL COMMENT '用户ID',
-  `product_id` bigint NOT NULL COMMENT '商品ID',
+  `id` varchar(128) NOT NULL COMMENT '主键ID',
+  `user_id` varchar(128) NOT NULL COMMENT '用户ID',
+  `product_id` varchar(128) NOT NULL COMMENT '商品ID',
   `quantity` int NOT NULL DEFAULT '1' COMMENT '数量',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -80,7 +80,7 @@ CREATE TABLE `cart` (
 DROP TABLE IF EXISTS `category`;
 
 CREATE TABLE `category` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `id` varchar(128) NOT NULL COMMENT '主键ID',
   `name` varchar(50) NOT NULL COMMENT '分类名称',
   `code` varchar(50) NOT NULL COMMENT '分类编码',
   `icon` varchar(255) DEFAULT NULL COMMENT '分类图标',
@@ -92,12 +92,12 @@ CREATE TABLE `category` (
   UNIQUE KEY `uk_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='商品分类表';
 
-INSERT INTO `category` (`id`, `name`, `code`, `icon`, `sort`, `status`, `create_time`, `update_time`) VALUES (1, '干货', 'ganhuo', '/category/20260914_fd752fc635e54dcbbf6455cd4e4c8caa.png', 1, 1, '2026-09-14 20:39:46', '2026-09-14 22:12:43'), (2, '蔬菜', 'shucai', '/category/20260914_db9c0ef25be34d3bb62df6babd0925a9.png', 2, 1, '2026-09-14 20:39:46', '2026-09-14 22:12:53'), (3, '生态油', 'shengtaiyou', '/category/20260914_010f693c79e3459f8dee9fff8be5c286.png', 3, 1, '2026-09-14 20:39:46', '2026-09-14 22:13:04'), (4, '酒', 'jiu', '/category/20260914_9a7c0d523f98407088d71b7b3fa3c1ce.png', 4, 1, '2026-09-14 20:39:46', '2026-09-14 22:13:17'), (5, '养殖', 'yangzhi', '/category/20260914_003dcde9fa98403f96bc3ec657ec7800.png', 5, 1, '2026-09-14 20:39:46', '2026-09-14 22:13:28');
+INSERT INTO `category` (`id`, `name`, `code`, `icon`, `sort`, `status`, `create_time`, `update_time`) VALUES ('1', '干货', 'ganhuo', '/category/20260914_fd752fc635e54dcbbf6455cd4e4c8caa.png', 1, 1, '2026-09-14 20:39:46', '2026-09-14 22:12:43'), ('2', '蔬菜', 'shucai', '/category/20260914_db9c0ef25be34d3bb62df6babd0925a9.png', 2, 1, '2026-09-14 20:39:46', '2026-09-14 22:12:53'), ('3', '生态油', 'shengtaiyou', '/category/20260914_010f693c79e3459f8dee9fff8be5c286.png', 3, 1, '2026-09-14 20:39:46', '2026-09-14 22:13:04'), ('4', '酒', 'jiu', '/category/20260914_9a7c0d523f98407088d71b7b3fa3c1ce.png', 4, 1, '2026-09-14 20:39:46', '2026-09-14 22:13:17'), ('5', '养殖', 'yangzhi', '/category/20260914_003dcde9fa98403f96bc3ec657ec7800.png', 5, 1, '2026-09-14 20:39:46', '2026-09-14 22:13:28');
 
 DROP TABLE IF EXISTS `config`;
 
 CREATE TABLE `config` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `id` varchar(128) NOT NULL COMMENT '主键ID',
   `config_key` varchar(50) NOT NULL COMMENT '配置键',
   `config_value` text COMMENT '配置值',
   `description` varchar(255) DEFAULT NULL COMMENT '描述',
@@ -105,12 +105,12 @@ CREATE TABLE `config` (
   UNIQUE KEY `uk_config_key` (`config_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='系统配置表';
 
-INSERT INTO `config` (`id`, `config_key`, `config_value`, `description`) VALUES (1, 'wechat', 'mall-farm', '微信号'), (2, 'douyin', 'mall-farm', '抖音号'), (3, 'phone', '13800138000', '联系电话'), (4, 'address', '某省某市某县大山村', '地址'), (5, 'amap_key', '', '高德地图Web服务Key'), (6, 'amap_secret', '', '高德地图数字密钥(安全密钥/Secret Key)');
+INSERT INTO `config` (`id`, `config_key`, `config_value`, `description`) VALUES ('1', 'wechat', 'mall-farm', '微信号'), ('2', 'douyin', 'mall-farm', '抖音号'), ('3', 'phone', '13800138000', '联系电话'), ('4', 'address', '某省某市某县大山村', '地址'), ('5', 'amap_key', '', '高德地图Web服务Key'), ('6', 'amap_secret', '', '高德地图数字密钥(安全密钥/Secret Key)');
 
 DROP TABLE IF EXISTS `logistics`;
 
 CREATE TABLE `logistics` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `id` varchar(128) NOT NULL COMMENT '主键ID',
   `title` varchar(100) NOT NULL COMMENT '标题',
   `content` text COMMENT '内容',
   `type` tinyint DEFAULT '1' COMMENT '类型 1进城 2下乡',
@@ -123,10 +123,10 @@ CREATE TABLE `logistics` (
 DROP TABLE IF EXISTS `order`;
 
 CREATE TABLE `order` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `id` varchar(128) NOT NULL COMMENT '主键ID',
   `order_no` varchar(50) NOT NULL COMMENT '订单号',
-  `user_id` bigint NOT NULL COMMENT '用户ID',
-  `address_id` bigint DEFAULT NULL COMMENT '收货地址ID(关联address表)',
+  `user_id` varchar(128) NOT NULL COMMENT '用户ID',
+  `address_id` varchar(128) DEFAULT NULL COMMENT '收货地址ID(关联address表)',
   `product_total` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '商品小计',
   `freight_amount` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '快递费',
   `pay_amount` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '实付金额(=商品小计+快递费)',
@@ -150,9 +150,9 @@ CREATE TABLE `order` (
 DROP TABLE IF EXISTS `order_item`;
 
 CREATE TABLE `order_item` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `order_id` bigint NOT NULL COMMENT '订单ID',
-  `product_id` bigint NOT NULL COMMENT '商品ID',
+  `id` varchar(128) NOT NULL COMMENT '主键ID',
+  `order_id` varchar(128) NOT NULL COMMENT '订单ID',
+  `product_id` varchar(128) NOT NULL COMMENT '商品ID',
   `product_name` varchar(100) NOT NULL COMMENT '商品名称(下单时快照)',
   `product_image` varchar(255) DEFAULT NULL COMMENT '商品图片(下单时快照)',
   `product_unit` varchar(20) DEFAULT NULL COMMENT '商品单位(下单时快照,如斤/只)',
@@ -166,11 +166,11 @@ CREATE TABLE `order_item` (
 DROP TABLE IF EXISTS `payment`;
 
 CREATE TABLE `payment` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `id` varchar(128) NOT NULL COMMENT '主键',
   `payment_no` varchar(32) NOT NULL COMMENT '本系统支付流水号(P开头, 唯一)',
-  `order_id` bigint NOT NULL COMMENT '关联订单ID',
+  `order_id` varchar(128) NOT NULL COMMENT '关联订单ID',
   `order_no` varchar(32) NOT NULL COMMENT '关联订单号(冗余, 方便查询)',
-  `user_id` bigint NOT NULL COMMENT '用户ID',
+  `user_id` varchar(128) NOT NULL COMMENT '用户ID',
   `pay_amount` decimal(10,2) NOT NULL COMMENT '支付金额(单位元)',
   `pay_type` tinyint NOT NULL COMMENT '支付方式 1微信 2支付宝 3货到付款 99Mock',
   `pay_status` tinyint NOT NULL DEFAULT '0' COMMENT '支付状态 0待支付 1已支付成功 2支付失败 3已关闭 4已退款',
@@ -198,8 +198,8 @@ CREATE TABLE `payment` (
 DROP TABLE IF EXISTS `product`;
 
 CREATE TABLE `product` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `category_id` bigint NOT NULL COMMENT '分类ID',
+  `id` varchar(128) NOT NULL COMMENT '主键ID',
+  `category_id` varchar(128) NOT NULL COMMENT '分类ID',
   `name` varchar(100) NOT NULL COMMENT '商品名称',
   `image` varchar(255) DEFAULT NULL COMMENT '商品图片',
   `images` text COMMENT '商品图片集(JSON)',
@@ -218,12 +218,12 @@ CREATE TABLE `product` (
   KEY `idx_category_id` (`category_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='商品表';
 
-INSERT INTO `product` (`id`, `category_id`, `name`, `image`, `images`, `tags`, `price`, `unit`, `stock`, `description`, `origin`, `sales`, `status`, `sort`, `create_time`, `update_time`) VALUES (1, 1, '白辣椒', '/product/20260914_de60e7a595b3482cae86741812a196aa.png', '["/product/images/20260914_3cad270385fe45d6b19334f1ba384c41.png","/product/images/20260914_b80ef9d4db5c453da2587c751cca3e9d.png","/product/images/20260914_36b133aee39f4512be0824fd198cb01e.png"]', '[1]', 25.00, '斤', 999, '农家晒制白辣椒，香辣可口，是下饭的好伴侣', '大山村', 0, 1, 1, '2026-09-14 20:39:46', '2026-09-14 23:24:57'), (2, 1, '豆角干', NULL, '', '[1,2,3]', 20.00, '斤', 999, '精选新鲜豆角晒制，保留原汁原味', '大山村', 0, 1, 2, '2026-09-14 20:39:46', '2026-09-14 23:38:58'), (3, 1, '茄子干', NULL, NULL, NULL, 22.00, '斤', 999, '传统工艺晒制，软糯香甜', '大山村', 0, 1, 3, '2026-09-14 20:39:46', '2026-09-14 20:39:46'), (4, 1, '笋干', NULL, NULL, NULL, 35.00, '斤', 999, '高山竹笋晒制，鲜嫩爽口', '大山村', 0, 1, 4, '2026-09-14 20:39:46', '2026-09-14 20:39:46'), (5, 2, '辣椒', NULL, NULL, NULL, 8.00, '斤', 999, '新鲜采摘，辣味十足', '大山村', 0, 1, 1, '2026-09-14 20:39:46', '2026-09-14 20:39:46'), (6, 2, '豆角', NULL, NULL, NULL, 6.00, '斤', 999, '农家种植，新鲜嫩绿', '大山村', 0, 1, 2, '2026-09-14 20:39:46', '2026-09-14 20:39:46'), (7, 2, '生姜', NULL, NULL, NULL, 10.00, '斤', 999, '老姜味道浓郁，适合烹饪', '大山村', 0, 1, 3, '2026-09-14 20:39:46', '2026-09-14 20:39:46'), (8, 3, '菜籽油', '/product/20260914_52dc14cac97a4813a74ca64f1a0ef865.png', '["/product/images/20260914_54a3a72652154cf5ad91932fcec81992.png","/product/images/20260914_e8e81445ff6e45f99ba87b9202913d67.png"]', '[1,2]', 15.00, '斤', 999, '传统压榨，纯正香浓', '大山村', 0, 1, 1, '2026-09-14 20:39:46', '2026-09-14 23:38:31'), (9, 3, '茶油', NULL, NULL, NULL, 60.00, '斤', 999, '高山茶籽压榨，营养丰富', '大山村', 0, 1, 2, '2026-09-14 20:39:46', '2026-09-14 20:39:46'), (10, 4, '米酒', NULL, '', '[1,2,3]', 20.00, '斤', 999, '农家自酿米酒，醇香甘甜', '大山村', 0, 1, 1, '2026-09-14 20:39:46', '2026-09-14 23:38:41'), (11, 4, '红薯酒', NULL, NULL, NULL, 25.00, '斤', 999, '传统工艺酿造，口感独特', '大山村', 0, 1, 2, '2026-09-14 20:39:46', '2026-09-14 20:39:46'), (12, 5, '月子鸡', NULL, '', '[1,2,3]', 150.00, '只', 999, '散养土鸡，滋补佳品', '大山村', 0, 1, 1, '2026-09-14 20:39:46', '2026-09-14 23:38:46'), (13, 5, '土鸭', NULL, NULL, NULL, 120.00, '只', 999, '农家散养，肉质鲜美', '大山村', 0, 1, 2, '2026-09-14 20:39:46', '2026-09-14 20:39:46'), (14, 5, '山羊肉', NULL, NULL, NULL, 45.00, '斤', 999, '高山放养，肉质细嫩', '大山村', 0, 1, 3, '2026-09-14 20:39:46', '2026-09-14 20:39:46'), (15, 5, '黄牛肉', NULL, NULL, NULL, 55.00, '斤', 999, '农家养殖，新鲜宰杀', '大山村', 0, 1, 4, '2026-09-14 20:39:46', '2026-09-14 20:39:46');
+INSERT INTO `product` (`id`, `category_id`, `name`, `image`, `images`, `tags`, `price`, `unit`, `stock`, `description`, `origin`, `sales`, `status`, `sort`, `create_time`, `update_time`) VALUES ('1', '1', '白辣椒', '/product/20260914_de60e7a595b3482cae86741812a196aa.png', '["/product/images/20260914_3cad270385fe45d6b19334f1ba384c41.png","/product/images/20260914_b80ef9d4db5c453da2587c751cca3e9d.png","/product/images/20260914_36b133aee39f4512be0824fd198cb01e.png"]', '["1"]', 25.00, '斤', 999, '农家晒制白辣椒，香辣可口，是下饭的好伴侣', '大山村', 0, 1, 1, '2026-09-14 20:39:46', '2026-09-14 23:24:57'), ('2', '1', '豆角干', NULL, '', '["1","2","3"]', 20.00, '斤', 999, '精选新鲜豆角晒制，保留原汁原味', '大山村', 0, 1, 2, '2026-09-14 20:39:46', '2026-09-14 23:38:58'), ('3', '1', '茄子干', NULL, NULL, NULL, 22.00, '斤', 999, '传统工艺晒制，软糯香甜', '大山村', 0, 1, 3, '2026-09-14 20:39:46', '2026-09-14 20:39:46'), ('4', '1', '笋干', NULL, NULL, NULL, 35.00, '斤', 999, '高山竹笋晒制，鲜嫩爽口', '大山村', 0, 1, 4, '2026-09-14 20:39:46', '2026-09-14 20:39:46'), ('5', '2', '辣椒', NULL, NULL, NULL, 8.00, '斤', 999, '新鲜采摘，辣味十足', '大山村', 0, 1, 1, '2026-09-14 20:39:46', '2026-09-14 20:39:46'), ('6', '2', '豆角', NULL, NULL, NULL, 6.00, '斤', 999, '农家种植，新鲜嫩绿', '大山村', 0, 1, 2, '2026-09-14 20:39:46', '2026-09-14 20:39:46'), ('7', '2', '生姜', NULL, NULL, NULL, 10.00, '斤', 999, '老姜味道浓郁，适合烹饪', '大山村', 0, 1, 3, '2026-09-14 20:39:46', '2026-09-14 20:39:46'), ('8', '3', '菜籽油', '/product/20260914_52dc14cac97a4813a74ca64f1a0ef865.png', '["/product/images/20260914_54a3a72652154cf5ad91932fcec81992.png","/product/images/20260914_e8e81445ff6e45f99ba87b9202913d67.png"]', '["1","2"]', 15.00, '斤', 999, '传统压榨，纯正香浓', '大山村', 0, 1, 1, '2026-09-14 20:39:46', '2026-09-14 23:38:31'), ('9', '3', '茶油', NULL, NULL, NULL, 60.00, '斤', 999, '高山茶籽压榨，营养丰富', '大山村', 0, 1, 2, '2026-09-14 20:39:46', '2026-09-14 20:39:46'), ('10', '4', '米酒', NULL, '', '["1","2","3"]', 20.00, '斤', 999, '农家自酿米酒，醇香甘甜', '大山村', 0, 1, 1, '2026-09-14 20:39:46', '2026-09-14 23:38:41'), ('11', '4', '红薯酒', NULL, NULL, NULL, 25.00, '斤', 999, '传统工艺酿造，口感独特', '大山村', 0, 1, 2, '2026-09-14 20:39:46', '2026-09-14 20:39:46'), ('12', '5', '月子鸡', NULL, '', '["1","2","3"]', 150.00, '只', 999, '散养土鸡，滋补佳品', '大山村', 0, 1, 1, '2026-09-14 20:39:46', '2026-09-14 23:38:46'), ('13', '5', '土鸭', NULL, NULL, NULL, 120.00, '只', 999, '农家散养，肉质鲜美', '大山村', 0, 1, 2, '2026-09-14 20:39:46', '2026-09-14 20:39:46'), ('14', '5', '山羊肉', NULL, NULL, NULL, 45.00, '斤', 999, '高山放养，肉质细嫩', '大山村', 0, 1, 3, '2026-09-14 20:39:46', '2026-09-14 20:39:46'), ('15', '5', '黄牛肉', NULL, NULL, NULL, 55.00, '斤', 999, '农家养殖，新鲜宰杀', '大山村', 0, 1, 4, '2026-09-14 20:39:46', '2026-09-14 20:39:46');
 
 DROP TABLE IF EXISTS `product_tag`;
 
 CREATE TABLE `product_tag` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `id` varchar(128) NOT NULL COMMENT '主键ID',
   `name` varchar(50) NOT NULL COMMENT '标签名称',
   `image` varchar(255) DEFAULT NULL COMMENT '标签图片',
   `sort` int DEFAULT '0' COMMENT '排序',
@@ -234,12 +234,12 @@ CREATE TABLE `product_tag` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='商品标签表';
 
-INSERT INTO `product_tag` (`id`, `name`, `image`, `sort`, `is_hotselling`, `status`, `create_time`, `update_time`) VALUES (1, '热销推荐1', '/tag/20260914_46f738ce44bf4b56adf75febdcab9080.png', 1, 1, 1, '2026-09-14 20:39:46', '2026-09-14 22:10:15'), (2, '新鲜采摘', '/tag/20260914_23b9139e222e454786d7a7db0d9f6e68.png', 2, 0, 1, '2026-09-14 20:39:46', '2026-09-14 22:10:47'), (3, '农家自产', '/tag/20260914_59cff32ef15242d282a2c25184dbc0b7.png', 3, 0, 1, '2026-09-14 20:39:46', '2026-09-14 22:10:58');
+INSERT INTO `product_tag` (`id`, `name`, `image`, `sort`, `is_hotselling`, `status`, `create_time`, `update_time`) VALUES ('1', '热销推荐1', '/tag/20260914_46f738ce44bf4b56adf75febdcab9080.png', 1, 1, 1, '2026-09-14 20:39:46', '2026-09-14 22:10:15'), ('2', '新鲜采摘', '/tag/20260914_23b9139e222e454786d7a7db0d9f6e68.png', 2, 0, 1, '2026-09-14 20:39:46', '2026-09-14 22:10:47'), ('3', '农家自产', '/tag/20260914_59cff32ef15242d282a2c25184dbc0b7.png', 3, 0, 1, '2026-09-14 20:39:46', '2026-09-14 22:10:58');
 
 DROP TABLE IF EXISTS `user`;
 
 CREATE TABLE `user` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `id` varchar(128) NOT NULL COMMENT '主键ID',
   `username` varchar(50) NOT NULL COMMENT '用户名',
   `password` varchar(100) DEFAULT NULL COMMENT '密码(微信免密用户可为空)',
   `phone` varchar(20) DEFAULT NULL COMMENT '手机号',
@@ -257,6 +257,6 @@ CREATE TABLE `user` (
   KEY `idx_unionid` (`unionid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户表';
 
-INSERT INTO `user` (`id`, `username`, `password`, `phone`, `avatar`, `nickname`, `status`, `create_time`, `update_time`) VALUES (1, 'user', '$2a$10$rjet.LriLzGqBZ9StUj0QeBKAnojolx.fgAqVWlhC7KgvRiQSb4z.', '13800138001', NULL, '测试用户', 1, '2026-09-14 20:39:46', '2026-09-15 01:07:54');
+INSERT INTO `user` (`id`, `username`, `password`, `phone`, `avatar`, `nickname`, `status`, `create_time`, `update_time`) VALUES ('1', 'user', '$2a$10$rjet.LriLzGqBZ9StUj0QeBKAnojolx.fgAqVWlhC7KgvRiQSb4z.', '13800138001', NULL, '测试用户', 1, '2026-09-14 20:39:46', '2026-09-15 01:07:54');
 
 SET FOREIGN_KEY_CHECKS = 1;

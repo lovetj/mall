@@ -47,9 +47,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public OrderVO checkout(OrderCheckoutDTO dto, Long userId) {
+    public OrderVO checkout(OrderCheckoutDTO dto, String userId) {
         // 1. 校验用户
-        if (userId == null) {
+        if (!org.springframework.util.StringUtils.hasText(userId)) {
             throw new RuntimeException("用户未登录");
         }
 
@@ -64,9 +64,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         }
 
         // 3. 批量查询商品
-        List<Long> productIds = cartList.stream().map(Cart::getProductId).distinct().collect(Collectors.toList());
+        List<String> productIds = cartList.stream().map(Cart::getProductId).distinct().collect(Collectors.toList());
         List<Product> products = productMapper.selectBatchIds(productIds);
-        Map<Long, Product> productMap = products.stream()
+        Map<String, Product> productMap = products.stream()
                 .collect(Collectors.toMap(Product::getId, p -> p, (k1, k2) -> k1));
 
         // 4. 校验购物车中每个商品是否存在、在售、库存足够
@@ -132,7 +132,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         }
 
         // 9. 删除已结算的购物车项
-        List<Long> cartIds = cartList.stream().map(Cart::getId).collect(Collectors.toList());
+        List<String> cartIds = cartList.stream().map(Cart::getId).collect(Collectors.toList());
         cartMapper.deleteBatchIds(cartIds);
 
         // 10. 组装 OrderVO 返回给前端 (含 id/orderNo/payAmount, 方便直接跳支付页)
@@ -151,8 +151,8 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public String createOrder(OrderDTO dto, Long userId) {
-        if (userId == null) {
+    public String createOrder(OrderDTO dto, String userId) {
+        if (!org.springframework.util.StringUtils.hasText(userId)) {
             throw new RuntimeException("用户未登录");
         }
 
@@ -205,10 +205,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     // ==================== 订单分页列表 ====================
 
     @Override
-    public PageResult<OrderVO> pageList(Integer pageNum, Integer pageSize, Integer status, Long userId) {
+    public PageResult<OrderVO> pageList(Integer pageNum, Integer pageSize, Integer status, String userId) {
         Page<Order> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
-        if (userId != null) {
+        if (org.springframework.util.StringUtils.hasText(userId)) {
             wrapper.eq(Order::getUserId, userId);
         }
         if (status != null && status >= 0) {
@@ -219,8 +219,8 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
         // 批量查订单项
         List<Order> records = result.getRecords();
-        List<Long> orderIds = records.stream().map(Order::getId).collect(Collectors.toList());
-        Map<Long, List<OrderItem>> itemsMap;
+        List<String> orderIds = records.stream().map(Order::getId).collect(Collectors.toList());
+        Map<String, List<OrderItem>> itemsMap;
         if (!orderIds.isEmpty()) {
             List<OrderItem> allItems = orderItemMapper.selectList(
                     new LambdaQueryWrapper<OrderItem>().in(OrderItem::getOrderId, orderIds));
@@ -261,10 +261,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     // ==================== 订单详情 ====================
 
     @Override
-    public OrderVO getDetail(Long id, Long userId) {
+    public OrderVO getDetail(String id, String userId) {
         LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Order::getId, id);
-        if (userId != null) {
+        if (org.springframework.util.StringUtils.hasText(userId)) {
             wrapper.eq(Order::getUserId, userId);
         }
         Order order = getOne(wrapper);
@@ -315,7 +315,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     }
 
     @Override
-    public Map<Integer, Long> countByUserIdGroupByStatus(Long userId) {
+    public Map<Integer, Long> countByUserIdGroupByStatus(String userId) {
         // SELECT status, COUNT(*) FROM `order` WHERE user_id = ? GROUP BY status
         List<Map<String, Object>> rows = baseMapper.selectMaps(
                 new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Order>()

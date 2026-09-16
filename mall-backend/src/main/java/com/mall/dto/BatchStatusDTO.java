@@ -9,7 +9,7 @@ import java.util.List;
 @Data
 public class BatchStatusDTO {
     @NotEmpty(message = "ID列表不能为空")
-    private List<Long> ids;
+    private List<String> ids;
 
     @NotNull(message = "状态不能为空")
     private Integer status;

@@ -71,7 +71,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public PayResponseDTO createPayment(PayRequestDTO request, Long userId, String clientIp) {
+    public PayResponseDTO createPayment(PayRequestDTO request, String userId, String clientIp) {
         PayResponseDTO resp = new PayResponseDTO();
 
         // 1. 校验订单
@@ -196,7 +196,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public PayResponseDTO queryPaymentStatus(String paymentNo, Long userId) {
+    public PayResponseDTO queryPaymentStatus(String paymentNo, String userId) {
         PayResponseDTO resp = new PayResponseDTO();
         Payment payment = paymentMapper.selectOne(
                 new LambdaQueryWrapper<Payment>()
@@ -223,7 +223,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public PayResponseDTO mockPaySuccess(String paymentNo, Long userId) {
+    public PayResponseDTO mockPaySuccess(String paymentNo, String userId) {
         PayResponseDTO resp = new PayResponseDTO();
         if (!payConfig.getMock().isEnabled()) {
             resp.setSuccess(false);

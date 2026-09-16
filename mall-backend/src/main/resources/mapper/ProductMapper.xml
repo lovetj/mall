@@ -30,7 +30,7 @@
             <if test="keyword != null and keyword != ''">
                 AND p.name LIKE CONCAT('%', #{keyword}, '%')
             </if>
-            <if test="categoryId != null">
+            <if test="categoryId != null and categoryId != ''">
                 AND p.category_id = #{categoryId}
             </if>
             <if test="status != null">

@@ -17,11 +17,11 @@ public interface ProductTagService extends IService<ProductTag> {
 
     void updateTag(ProductTagDTO dto);
 
-    void deleteTag(Long id);
+    void deleteTag(String id);
 
-    void deleteBatch(List<Long> ids);
+    void deleteBatch(List<String> ids);
 
-    void updateStatus(Long id, Integer status);
+    void updateStatus(String id, Integer status);
 
-    void updateStatusBatch(List<Long> ids, Integer status);
+    void updateStatusBatch(List<String> ids, Integer status);
 }

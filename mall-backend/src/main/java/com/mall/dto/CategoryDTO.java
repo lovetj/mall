@@ -6,7 +6,7 @@ import javax.validation.constraints.NotBlank;
 
 @Data
 public class CategoryDTO {
-    private Long id;
+    private String id;
 
     @NotBlank(message = "分类名称不能为空")
     private String name;

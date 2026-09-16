@@ -10,7 +10,7 @@ public class CartDTO implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @NotNull(message = "商品ID不能为空")
-    private Long productId;
+    private String productId;
 
     private Integer quantity;
 }

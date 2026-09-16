@@ -70,7 +70,7 @@ public class ProductController {
     }
 
     @GetMapping("/category/{categoryId}")
-    public Result<List<Product>> listByCategory(@PathVariable Long categoryId) {
+    public Result<List<Product>> listByCategory(@PathVariable String categoryId) {
         return Result.success(productService.listByCategoryId(categoryId));
     }
 
@@ -80,7 +80,7 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
-    public Result<Product> detail(@PathVariable Long id) {
+    public Result<Product> detail(@PathVariable String id) {
         Product product = productService.getById(id);
         if (product != null) {
             if (!StringUtils.hasText(product.getCategoryName()) && product.getCategoryId() != null) {
@@ -92,14 +92,14 @@ public class ProductController {
             if (StringUtils.hasText(product.getTags())) {
                 try {
                     String tagsStr = product.getTags().trim();
-                    List<Long> tagIds = new ArrayList<>();
+                    List<String> tagIds = new ArrayList<>();
                     if (tagsStr.startsWith("[") && tagsStr.endsWith("]")) {
                         tagsStr = tagsStr.substring(1, tagsStr.length() - 1);
                     }
                     for (String part : tagsStr.split(",")) {
                         String clean = part.trim().replace("\"", "").replace("'", "");
                         if (StringUtils.hasText(clean)) {
-                            tagIds.add(Long.parseLong(clean));
+                            tagIds.add(clean);
                         }
                     }
                     if (!tagIds.isEmpty()) {
@@ -134,25 +134,25 @@ public class ProductController {
     }
 
     @DeleteMapping("/{id}")
-    public Result<Void> delete(@PathVariable Long id) {
+    public Result<Void> delete(@PathVariable String id) {
         productService.deleteProduct(id);
         return Result.success();
     }
 
     @DeleteMapping("/batch")
-    public Result<Void> batchDelete(@RequestBody List<Long> ids) {
+    public Result<Void> batchDelete(@RequestBody List<String> ids) {
         productService.deleteBatch(ids);
         return Result.success();
     }
 
     @PostMapping("/batch-delete")
-    public Result<Void> batchDeletePost(@RequestBody List<Long> ids) {
+    public Result<Void> batchDeletePost(@RequestBody List<String> ids) {
         productService.deleteBatch(ids);
         return Result.success();
     }
 
     @PutMapping("/{id}/status/{status}")
-    public Result<Void> updateStatus(@PathVariable Long id, @PathVariable Integer status) {
+    public Result<Void> updateStatus(@PathVariable String id, @PathVariable Integer status) {
         productService.updateStatus(id, status);
         return Result.success();
     }

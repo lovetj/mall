@@ -62,8 +62,8 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
                     .filter(p -> p.getName() != null && p.getName().contains(kw))
                     .collect(Collectors.toList());
         }
-        Long categoryId = query.getCategoryId();
-        if (categoryId != null) {
+        String categoryId = query.getCategoryId();
+        if (categoryId != null && !categoryId.trim().isEmpty()) {
             filtered = filtered.stream()
                     .filter(p -> categoryId.equals(p.getCategoryId()))
                     .collect(Collectors.toList());
@@ -93,7 +93,7 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         if (hotTags == null || hotTags.isEmpty()) {
             return Collections.emptyList();
         }
-        Set<Long> hotTagIds = hotTags.stream().map(ProductTag::getId).collect(Collectors.toSet());
+        Set<String> hotTagIds = hotTags.stream().map(ProductTag::getId).collect(Collectors.toSet());
         List<Product> allProducts = baseMapper.selectProductsWithCategory();
         if (allProducts == null || allProducts.isEmpty()) {
             return Collections.emptyList();
@@ -103,7 +103,7 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
                     if (status != null && !status.equals(p.getStatus())) {
                         return false;
                     }
-                    List<Long> tagIds = parseTagIds(p.getTags());
+                    List<String> tagIds = parseTagIds(p.getTags());
                     return tagIds.stream().anyMatch(hotTagIds::contains);
                 })
                 .sorted((p1, p2) -> {
@@ -125,7 +125,7 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
                 .collect(Collectors.toList());
     }
 
-    private List<Long> parseTagIds(String tagsStr) {
+    private List<String> parseTagIds(String tagsStr) {
         if (!StringUtils.hasText(tagsStr)) {
             return Collections.emptyList();
         }
@@ -134,11 +134,11 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
             if (clean.startsWith("[") && clean.endsWith("]")) {
                 clean = clean.substring(1, clean.length() - 1);
             }
-            List<Long> tagIds = new ArrayList<>();
+            List<String> tagIds = new ArrayList<>();
             for (String part : clean.split(",")) {
                 String idStr = part.trim().replace("\"", "").replace("'", "");
                 if (StringUtils.hasText(idStr)) {
-                    tagIds.add(Long.parseLong(idStr));
+                    tagIds.add(idStr);
                 }
             }
             return tagIds;
@@ -148,7 +148,7 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     }
 
     @Override
-    public List<Product> listByCategoryId(Long categoryId) {
+    public List<Product> listByCategoryId(String categoryId) {
         List<Product> list = baseMapper.selectByCategoryId(categoryId);
         urlUtil.resolveProducts(list);
         return list;
@@ -182,7 +182,7 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     }
 
     @Override
-    public void deleteProduct(Long id) {
+    public void deleteProduct(String id) {
         if (id == null) {
             return;
         }
@@ -196,7 +196,7 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     }
 
     @Override
-    public void deleteBatch(List<Long> ids) {
+    public void deleteBatch(List<String> ids) {
         if (ids != null && !ids.isEmpty()) {
             LambdaQueryWrapper<Cart> cartWrapper = new LambdaQueryWrapper<>();
             cartWrapper.in(Cart::getProductId, ids);
@@ -209,7 +209,7 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     }
 
     @Override
-    public void updateStatus(Long id, Integer status) {
+    public void updateStatus(String id, Integer status) {
         Product product = new Product();
         product.setId(id);
         product.setStatus(status);
@@ -217,7 +217,7 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     }
 
     @Override
-    public void updateStatusBatch(List<Long> ids, Integer status) {
+    public void updateStatusBatch(List<String> ids, Integer status) {
         if (ids != null && !ids.isEmpty()) {
             List<Product> products = ids.stream().map(id -> {
                 Product p = new Product();

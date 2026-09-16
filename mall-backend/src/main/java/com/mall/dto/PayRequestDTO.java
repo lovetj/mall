@@ -12,7 +12,7 @@ public class PayRequestDTO {
 
     /** 订单ID(必传) */
     @NotNull(message = "订单ID不能为空")
-    private Long orderId;
+    private String orderId;
 
     /** 支付方式: 1微信 2支付宝 3货到付款(必传) */
     @NotNull(message = "支付方式不能为空")

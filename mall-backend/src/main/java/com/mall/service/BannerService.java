@@ -17,11 +17,11 @@ public interface BannerService extends IService<Banner> {
 
     void updateBanner(BannerDTO dto);
 
-    void deleteBanner(Long id);
+    void deleteBanner(String id);
 
-    void deleteBatch(List<Long> ids);
+    void deleteBatch(List<String> ids);
 
-    void updateStatus(Long id, Integer status);
+    void updateStatus(String id, Integer status);
 
-    void updateStatusBatch(List<Long> ids, Integer status);
+    void updateStatusBatch(List<String> ids, Integer status);
 }

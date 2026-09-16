@@ -20,11 +20,11 @@ public class OrderCheckoutDTO {
 
     /** 购物车选中项ID列表 */
     @NotEmpty(message = "请选择要结算的商品")
-    private List<Long> cartItemIds;
+    private List<String> cartItemIds;
 
     /** 收货地址ID */
     @NotNull(message = "请选择收货地址")
-    private Long addressId;
+    private String addressId;
 
     /** 买家备注(可选) */
     private String remark;

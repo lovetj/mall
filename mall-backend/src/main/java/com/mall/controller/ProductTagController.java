@@ -35,7 +35,7 @@ public class ProductTagController {
     }
 
     @GetMapping("/{id}")
-    public Result<ProductTag> detail(@PathVariable Long id) {
+    public Result<ProductTag> detail(@PathVariable String id) {
         ProductTag tag = productTagService.getById(id);
         urlUtil.resolveProductTag(tag);
         return Result.success(tag);
@@ -54,25 +54,25 @@ public class ProductTagController {
     }
 
     @DeleteMapping("/{id}")
-    public Result<Void> delete(@PathVariable Long id) {
+    public Result<Void> delete(@PathVariable String id) {
         productTagService.deleteTag(id);
         return Result.success();
     }
 
     @DeleteMapping("/batch")
-    public Result<Void> batchDelete(@RequestBody List<Long> ids) {
+    public Result<Void> batchDelete(@RequestBody List<String> ids) {
         productTagService.deleteBatch(ids);
         return Result.success();
     }
 
     @PostMapping("/batch-delete")
-    public Result<Void> batchDeletePost(@RequestBody List<Long> ids) {
+    public Result<Void> batchDeletePost(@RequestBody List<String> ids) {
         productTagService.deleteBatch(ids);
         return Result.success();
     }
 
     @PutMapping("/{id}/status/{status}")
-    public Result<Void> updateStatus(@PathVariable Long id, @PathVariable Integer status) {
+    public Result<Void> updateStatus(@PathVariable String id, @PathVariable Integer status) {
         productTagService.updateStatus(id, status);
         return Result.success();
     }

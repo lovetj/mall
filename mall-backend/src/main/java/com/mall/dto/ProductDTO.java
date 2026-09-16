@@ -7,10 +7,10 @@ import javax.validation.constraints.NotNull;
 
 @Data
 public class ProductDTO {
-    private Long id;
+    private String id;
 
     @NotNull(message = "分类ID不能为空")
-    private Long categoryId;
+    private String categoryId;
 
     @NotBlank(message = "商品名称不能为空")
     private String name;

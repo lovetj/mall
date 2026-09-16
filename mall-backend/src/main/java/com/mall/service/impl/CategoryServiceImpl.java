@@ -57,11 +57,11 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
         return new PageResult<>(records, result.getTotal(), result.getPages(), result.getCurrent(), result.getSize());
     }
 
-    private void checkUniqueNameAndCode(String name, String code, Long excludeId) {
+    private void checkUniqueNameAndCode(String name, String code, String excludeId) {
         if (StringUtils.hasText(name)) {
             LambdaQueryWrapper<Category> nameWrapper = new LambdaQueryWrapper<Category>()
                     .eq(Category::getName, name.trim());
-            if (excludeId != null) {
+            if (excludeId != null && !excludeId.trim().isEmpty()) {
                 nameWrapper.ne(Category::getId, excludeId);
             }
             if (count(nameWrapper) > 0) {
@@ -71,7 +71,7 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
         if (StringUtils.hasText(code)) {
             LambdaQueryWrapper<Category> codeWrapper = new LambdaQueryWrapper<Category>()
                     .eq(Category::getCode, code.trim());
-            if (excludeId != null) {
+            if (excludeId != null && !excludeId.trim().isEmpty()) {
                 codeWrapper.ne(Category::getId, excludeId);
             }
             if (count(codeWrapper) > 0) {
@@ -106,7 +106,7 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
     }
 
     @Override
-    public void deleteCategory(Long id) {
+    public void deleteCategory(String id) {
         LambdaQueryWrapper<Product> productWrapper = new LambdaQueryWrapper<>();
         productWrapper.eq(Product::getCategoryId, id);
         Long productCount = productMapper.selectCount(productWrapper);
@@ -117,7 +117,7 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
     }
 
     @Override
-    public void deleteBatch(List<Long> ids) {
+    public void deleteBatch(List<String> ids) {
         if (ids != null && !ids.isEmpty()) {
             LambdaQueryWrapper<Product> productWrapper = new LambdaQueryWrapper<>();
             productWrapper.in(Product::getCategoryId, ids);
@@ -130,7 +130,7 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
     }
 
     @Override
-    public void updateStatus(Long id, Integer status) {
+    public void updateStatus(String id, Integer status) {
         Category category = new Category();
         category.setId(id);
         category.setStatus(status);
@@ -138,7 +138,7 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
     }
 
     @Override
-    public void updateStatusBatch(List<Long> ids, Integer status) {
+    public void updateStatusBatch(List<String> ids, Integer status) {
         if (ids != null && !ids.isEmpty()) {
             List<Category> list = ids.stream().map(id -> {
                 Category c = new Category();

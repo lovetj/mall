@@ -39,7 +39,7 @@ public class PaymentController {
 
     private User resolveUser(String authorization) {
         if (authorization != null && jwtUtil.validateToken(authorization)) {
-            Long userId = jwtUtil.getUserId(authorization);
+            String userId = jwtUtil.getUserId(authorization);
             return userService.getById(userId);
         }
         return null;

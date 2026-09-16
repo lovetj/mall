@@ -15,20 +15,20 @@ import java.time.LocalDateTime;
 public class Payment implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @TableId(value = "id", type = IdType.AUTO)
-    private Long id;
+    @TableId(value = "id", type = IdType.ASSIGN_UUID)
+    private String id;
 
     /** 本系统支付流水号(P开头, 唯一) */
     private String paymentNo;
 
     /** 关联订单ID */
-    private Long orderId;
+    private String orderId;
 
     /** 关联订单号(冗余) */
     private String orderNo;
 
     /** 用户ID */
-    private Long userId;
+    private String userId;
 
     /** 支付金额(单位元) */
     private BigDecimal payAmount;

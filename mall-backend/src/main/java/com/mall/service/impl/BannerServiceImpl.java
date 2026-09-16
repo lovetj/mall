@@ -80,19 +80,19 @@ public class BannerServiceImpl extends ServiceImpl<BannerMapper, Banner> impleme
     }
 
     @Override
-    public void deleteBanner(Long id) {
+    public void deleteBanner(String id) {
         removeById(id);
     }
 
     @Override
-    public void deleteBatch(List<Long> ids) {
+    public void deleteBatch(List<String> ids) {
         if (ids != null && !ids.isEmpty()) {
             removeByIds(ids);
         }
     }
 
     @Override
-    public void updateStatus(Long id, Integer status) {
+    public void updateStatus(String id, Integer status) {
         Banner banner = new Banner();
         banner.setId(id);
         banner.setStatus(status);
@@ -100,7 +100,7 @@ public class BannerServiceImpl extends ServiceImpl<BannerMapper, Banner> impleme
     }
 
     @Override
-    public void updateStatusBatch(List<Long> ids, Integer status) {
+    public void updateStatusBatch(List<String> ids, Integer status) {
         if (ids != null && !ids.isEmpty()) {
             List<Banner> list = ids.stream().map(id -> {
                 Banner b = new Banner();

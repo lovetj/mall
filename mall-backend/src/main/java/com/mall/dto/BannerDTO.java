@@ -6,7 +6,7 @@ import javax.validation.constraints.NotBlank;
 
 @Data
 public class BannerDTO {
-    private Long id;
+    private String id;
 
     private String title;
 

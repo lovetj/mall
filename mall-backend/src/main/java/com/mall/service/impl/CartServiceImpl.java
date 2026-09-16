@@ -31,7 +31,7 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
     private UrlUtil urlUtil;
 
     @Override
-    public List<CartVO> getCartList(Long userId) {
+    public List<CartVO> getCartList(String userId) {
         if (userId == null) {
             return Collections.emptyList();
         }
@@ -46,13 +46,13 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
             return Collections.emptyList();
         }
 
-        List<Long> productIds = cartList.stream()
+        List<String> productIds = cartList.stream()
                 .map(Cart::getProductId)
                 .distinct()
                 .collect(Collectors.toList());
 
         List<Product> products = productMapper.selectBatchIds(productIds);
-        Map<Long, Product> productMap = products.stream()
+        Map<String, Product> productMap = products.stream()
                 .collect(Collectors.toMap(Product::getId, p -> p, (k1, k2) -> k1));
 
         List<CartVO> result = new ArrayList<>();
@@ -87,7 +87,7 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void addToCart(Long userId, CartDTO dto) {
+    public void addToCart(String userId, CartDTO dto) {
         if (userId == null) {
             throw new RuntimeException("用户未登录");
         }
@@ -135,7 +135,7 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateQuantity(Long userId, Long productId, Integer quantity) {
+    public void updateQuantity(String userId, String productId, Integer quantity) {
         if (userId == null) {
             throw new RuntimeException("用户未登录");
         }
@@ -179,7 +179,7 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void changeQuantity(Long userId, Long productId, Integer delta) {
+    public void changeQuantity(String userId, String productId, Integer delta) {
         if (userId == null) {
             throw new RuntimeException("用户未登录");
         }
@@ -210,7 +210,7 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void deleteCartItem(Long userId, Long productId) {
+    public void deleteCartItem(String userId, String productId) {
         if (userId == null) {
             throw new RuntimeException("用户未登录");
         }
@@ -226,7 +226,7 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void deleteById(Long userId, Long cartId) {
+    public void deleteById(String userId, String cartId) {
         if (userId == null) {
             throw new RuntimeException("用户未登录");
         }
@@ -242,7 +242,7 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void clearCart(Long userId) {
+    public void clearCart(String userId) {
         if (userId == null) {
             throw new RuntimeException("用户未登录");
         }
@@ -253,7 +253,7 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
     }
 
     @Override
-    public Integer getCartCount(Long userId) {
+    public Integer getCartCount(String userId) {
         if (userId == null) {
             return 0;
         }

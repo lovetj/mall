@@ -64,7 +64,7 @@ public class UserController {
                              @RequestParam(required = false) String username) {
         User user = null;
         if (authorization != null && jwtUtil.validateToken(authorization)) {
-            Long userId = jwtUtil.getUserId(authorization);
+            String userId = jwtUtil.getUserId(authorization);
             user = userService.getById(userId);
         } else if (username != null && !username.trim().isEmpty()) {
             user = userService.getByUsername(username);
@@ -88,7 +88,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public Result<User> detail(@PathVariable Long id) {
+    public Result<User> detail(@PathVariable String id) {
         User user = userService.getById(id);
         if (user != null) {
             user.setPassword(null);
@@ -110,19 +110,19 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    public Result<Void> delete(@PathVariable Long id) {
+    public Result<Void> delete(@PathVariable String id) {
         userService.deleteUser(id);
         return Result.success();
     }
 
     @DeleteMapping("/batch")
-    public Result<Void> batchDelete(@RequestBody List<Long> ids) {
+    public Result<Void> batchDelete(@RequestBody List<String> ids) {
         userService.deleteBatch(ids);
         return Result.success();
     }
 
     @PostMapping("/batch-delete")
-    public Result<Void> batchDeletePost(@RequestBody List<Long> ids) {
+    public Result<Void> batchDeletePost(@RequestBody List<String> ids) {
         userService.deleteBatch(ids);
         return Result.success();
     }
@@ -136,7 +136,7 @@ public class UserController {
         if (authorization == null || !jwtUtil.validateToken(authorization)) {
             return Result.error(401, "用户未登录");
         }
-        Long userId = jwtUtil.getUserId(authorization);
+        String userId = jwtUtil.getUserId(authorization);
         User user = userService.getById(userId);
         if (user == null) {
             return Result.error("用户不存在");
@@ -158,7 +158,7 @@ public class UserController {
         if (authorization == null || !jwtUtil.validateToken(authorization)) {
             return Result.error(401, "用户未登录");
         }
-        Long userId = jwtUtil.getUserId(authorization);
+        String userId = jwtUtil.getUserId(authorization);
         User user = userService.getById(userId);
         if (user == null) {
             return Result.error("用户不存在");
@@ -182,7 +182,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}/status/{status}")
-    public Result<Void> updateStatus(@PathVariable Long id, @PathVariable Integer status) {
+    public Result<Void> updateStatus(@PathVariable String id, @PathVariable Integer status) {
         userService.updateStatus(id, status);
         return Result.success();
     }

@@ -9,9 +9,9 @@ import java.math.BigDecimal;
 
 @Data
 public class AddressDTO {
-    private Long id;
+    private String id;
 
-    private Long userId;
+    private String userId;
 
     @NotBlank(message = "收货人姓名不能为空")
     @Size(max = 20, message = "收货人姓名不能超过20个字")

@@ -35,7 +35,7 @@ public class CategoryController {
     }
 
     @GetMapping("/{id}")
-    public Result<Category> detail(@PathVariable Long id) {
+    public Result<Category> detail(@PathVariable String id) {
         Category category = categoryService.getById(id);
         urlUtil.resolveCategory(category);
         return Result.success(category);
@@ -54,25 +54,25 @@ public class CategoryController {
     }
 
     @DeleteMapping("/{id}")
-    public Result<Void> delete(@PathVariable Long id) {
+    public Result<Void> delete(@PathVariable String id) {
         categoryService.deleteCategory(id);
         return Result.success();
     }
 
     @DeleteMapping("/batch")
-    public Result<Void> batchDelete(@RequestBody List<Long> ids) {
+    public Result<Void> batchDelete(@RequestBody List<String> ids) {
         categoryService.deleteBatch(ids);
         return Result.success();
     }
 
     @PostMapping("/batch-delete")
-    public Result<Void> batchDeletePost(@RequestBody List<Long> ids) {
+    public Result<Void> batchDeletePost(@RequestBody List<String> ids) {
         categoryService.deleteBatch(ids);
         return Result.success();
     }
 
     @PutMapping("/{id}/status/{status}")
-    public Result<Void> updateStatus(@PathVariable Long id, @PathVariable Integer status) {
+    public Result<Void> updateStatus(@PathVariable String id, @PathVariable Integer status) {
         categoryService.updateStatus(id, status);
         return Result.success();
     }

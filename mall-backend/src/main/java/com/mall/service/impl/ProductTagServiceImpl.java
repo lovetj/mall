@@ -53,11 +53,11 @@ public class ProductTagServiceImpl extends ServiceImpl<ProductTagMapper, Product
         return new PageResult<>(records, result.getTotal(), result.getPages(), result.getCurrent(), result.getSize());
     }
 
-    private void checkUniqueName(String name, Long excludeId) {
+    private void checkUniqueName(String name, String excludeId) {
         if (StringUtils.hasText(name)) {
             LambdaQueryWrapper<ProductTag> wrapper = new LambdaQueryWrapper<ProductTag>()
                     .eq(ProductTag::getName, name.trim());
-            if (excludeId != null) {
+            if (StringUtils.hasText(excludeId)) {
                 wrapper.ne(ProductTag::getId, excludeId);
             }
             if (count(wrapper) > 0) {
@@ -85,7 +85,7 @@ public class ProductTagServiceImpl extends ServiceImpl<ProductTagMapper, Product
 
     @Override
     public void updateTag(ProductTagDTO dto) {
-        if (dto.getId() == null) {
+        if (!StringUtils.hasText(dto.getId())) {
             throw new RuntimeException("标签ID不能为空");
         }
         checkUniqueName(dto.getName(), dto.getId());
@@ -95,19 +95,19 @@ public class ProductTagServiceImpl extends ServiceImpl<ProductTagMapper, Product
     }
 
     @Override
-    public void deleteTag(Long id) {
+    public void deleteTag(String id) {
         removeById(id);
     }
 
     @Override
-    public void deleteBatch(List<Long> ids) {
+    public void deleteBatch(List<String> ids) {
         if (ids != null && !ids.isEmpty()) {
             removeByIds(ids);
         }
     }
 
     @Override
-    public void updateStatus(Long id, Integer status) {
+    public void updateStatus(String id, Integer status) {
         ProductTag tag = new ProductTag();
         tag.setId(id);
         tag.setStatus(status);
@@ -115,7 +115,7 @@ public class ProductTagServiceImpl extends ServiceImpl<ProductTagMapper, Product
     }
 
     @Override
-    public void updateStatusBatch(List<Long> ids, Integer status) {
+    public void updateStatusBatch(List<String> ids, Integer status) {
         if (ids != null && !ids.isEmpty()) {
             List<ProductTag> tags = ids.stream().map(id -> {
                 ProductTag t = new ProductTag();

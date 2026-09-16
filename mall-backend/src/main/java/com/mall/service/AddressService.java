@@ -8,17 +8,17 @@ import java.util.List;
 
 public interface AddressService extends IService<Address> {
 
-    List<Address> listByUserId(Long userId);
+    List<Address> listByUserId(String userId);
 
-    Address getDetail(Long userId, Long id);
+    Address getDetail(String userId, String id);
 
-    Address getDefaultAddress(Long userId);
+    Address getDefaultAddress(String userId);
 
-    void addAddress(Long userId, AddressDTO dto);
+    void addAddress(String userId, AddressDTO dto);
 
-    void updateAddress(Long userId, AddressDTO dto);
+    void updateAddress(String userId, AddressDTO dto);
 
-    void deleteAddress(Long userId, Long id);
+    void deleteAddress(String userId, String id);
 
-    void setDefaultAddress(Long userId, Long id);
+    void setDefaultAddress(String userId, String id);
 }

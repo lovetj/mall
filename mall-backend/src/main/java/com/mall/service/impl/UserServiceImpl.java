@@ -263,11 +263,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return new PageResult<>(records, result.getTotal(), result.getPages(), result.getCurrent(), result.getSize());
     }
 
-    private void checkUniqueUsername(String username, Long excludeId) {
+    private void checkUniqueUsername(String username, String excludeId) {
         if (StringUtils.hasText(username)) {
             LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<User>()
                     .eq(User::getUsername, username.trim());
-            if (excludeId != null) {
+            if (StringUtils.hasText(excludeId)) {
                 wrapper.ne(User::getId, excludeId);
             }
             if (count(wrapper) > 0) {
@@ -294,7 +294,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public void updateUser(UserDTO dto) {
-        if (dto.getId() == null) {
+        if (!StringUtils.hasText(dto.getId())) {
             throw new RuntimeException("用户ID不能为空");
         }
         checkUniqueUsername(dto.getUsername(), dto.getId());
@@ -316,7 +316,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public void deleteUser(Long id) {
+    public void deleteUser(String id) {
         LambdaQueryWrapper<Order> orderWrapper = new LambdaQueryWrapper<>();
         orderWrapper.eq(Order::getUserId, id);
         Long orderCount = orderMapper.selectCount(orderWrapper);
@@ -327,7 +327,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public void deleteBatch(List<Long> ids) {
+    public void deleteBatch(List<String> ids) {
         if (ids != null && !ids.isEmpty()) {
             LambdaQueryWrapper<Order> orderWrapper = new LambdaQueryWrapper<>();
             orderWrapper.in(Order::getUserId, ids);
@@ -340,7 +340,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public void updateStatus(Long id, Integer status) {
+    public void updateStatus(String id, Integer status) {
         User user = new User();
         user.setId(id);
         user.setStatus(status);
@@ -348,7 +348,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public void updateStatusBatch(List<Long> ids, Integer status) {
+    public void updateStatusBatch(List<String> ids, Integer status) {
         if (ids != null && !ids.isEmpty()) {
             List<User> list = ids.stream().map(id -> {
                 User u = new User();

@@ -22,7 +22,7 @@ public interface ProductMapper extends BaseMapper<Product> {
             "LEFT JOIN category c ON p.category_id = c.id " +
             "WHERE p.category_id = #{categoryId} " +
             "ORDER BY p.status DESC, p.sort ASC, p.create_time DESC")
-    List<Product> selectByCategoryId(@Param("categoryId") Long categoryId);
+    List<Product> selectByCategoryId(@Param("categoryId") String categoryId);
 
-    IPage<Product> selectPageWithCategory(Page<Product> page, @Param("keyword") String keyword, @Param("categoryId") Long categoryId, @Param("status") Integer status);
+    IPage<Product> selectPageWithCategory(Page<Product> page, @Param("keyword") String keyword, @Param("categoryId") String categoryId, @Param("status") Integer status);
 }

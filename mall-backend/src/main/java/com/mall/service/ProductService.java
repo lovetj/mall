@@ -15,7 +15,7 @@ public interface ProductService extends IService<Product> {
 
     PageResult<Product> pageHotselling(PageDTO pageDTO);
 
-    List<Product> listByCategoryId(Long categoryId);
+    List<Product> listByCategoryId(String categoryId);
 
     PageResult<Product> pageList(PageDTO pageDTO);
 
@@ -23,11 +23,11 @@ public interface ProductService extends IService<Product> {
 
     void updateProduct(ProductDTO dto);
 
-    void deleteProduct(Long id);
+    void deleteProduct(String id);
 
-    void deleteBatch(List<Long> ids);
+    void deleteBatch(List<String> ids);
 
-    void updateStatus(Long id, Integer status);
+    void updateStatus(String id, Integer status);
 
-    void updateStatusBatch(List<Long> ids, Integer status);
+    void updateStatusBatch(List<String> ids, Integer status);
 }
