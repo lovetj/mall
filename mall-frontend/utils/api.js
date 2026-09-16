@@ -16,11 +16,11 @@ const api = {
   },
 
   // ==================== 文件相关 ====================
-  uploadFile(filePath, module = 'common') {
+  uploadFile(filePath, module = 'common', extraData = {}) {
     return request.uploadFile({
       filePath,
       name: 'file',
-      formData: { module }
+      formData: { module, ...extraData }
     })
   },
 

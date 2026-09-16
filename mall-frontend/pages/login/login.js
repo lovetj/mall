@@ -118,15 +118,20 @@ Page({
   /**
    * 将本地临时头像上传至后端服务器
    * @param {string} tempUrl 本地临时文件路径（wxfile:// 或 http://tmp 等）
-   * @returns {Promise<string>} 后端返回的相对存储路径（如 /avatar/xxx.png）
+   * @param {string} openid 用户微信 openid（可选，用于固定头像文件名）
+   * @returns {Promise<string>} 后端返回的相对存储路径（如 /avatar/avatar_xxx.png）
    */
-  async uploadAvatarFile(tempUrl) {
+  async uploadAvatarFile(tempUrl, openid = '') {
     if (!tempUrl) return ''
     const isTemp = tempUrl.startsWith('wxfile://') || tempUrl.startsWith('http://tmp') || tempUrl.startsWith('tmp/')
     if (!isTemp) {
       return tempUrl
     }
-    const uploadRes = await api.uploadFile(tempUrl, 'avatar')
+    const extraData = {}
+    if (openid) {
+      extraData.openid = openid
+    }
+    const uploadRes = await api.uploadFile(tempUrl, 'avatar', extraData)
     if (uploadRes && uploadRes.relativePath) {
       return uploadRes.relativePath
     }
@@ -171,25 +176,16 @@ Page({
   },
 
   /**
-   * 真实登录：真实头像上传后端 + wx.login 换取凭证 + 提交后端
+   * 真实登录：wx.login 换取凭证 + 微信登录认证 + 头像固定文件名覆盖上传
    */
   async doLogin() {
     if (this.data.loading) return
     this.setData({ loading: true })
 
     try {
-      // 1. 头像真实上传后端（拿到服务器持久化相对路径）
-      let backendAvatarPath = ''
-      if (this.data.avatarUrl) {
-        try {
-          backendAvatarPath = await this.uploadAvatarFile(this.data.avatarUrl)
-        } catch (uploadErr) {
-          console.warn('头像上传后端异常，本次以本地临时路径展示:', uploadErr)
-        }
-      }
-
-      // 2. wx.login 获取微信登录凭证
       wx.showLoading({ title: '登录中...', mask: true })
+
+      // 1. wx.login 获取微信登录凭证
       const loginRes = await new Promise((resolve, reject) => {
         wx.login({
           success: (res) => (res.code ? resolve(res) : reject(new Error('未获取到code'))),
@@ -197,12 +193,37 @@ Page({
         })
       })
 
-      // 3. 提交微信原生授权返回的真实昵称与头像
+      // 2. 提交微信原生授权登录（先换取 token 与用户标识，避免未登录时头像随机命名）
       const res = await api.wxLogin({
         code: loginRes.code,
-        nickname: (this.data.nickName || '').trim(),
-        avatar: backendAvatarPath || undefined
+        nickname: (this.data.nickName || '').trim()
       })
+
+      const token = (res && res.token) || ''
+      const user = (res && res.user) || {}
+      if (token) {
+        // 先写入登录态，使后续上传请求可带上 Authorization token
+        auth.setLoginState(token, user)
+      }
+
+      // 3. 若有本地临时头像，上传至后端持久化（使用固定文件名覆盖）
+      let backendAvatarPath = (user && user.avatar) || ''
+      const isTempAvatar = this.data.avatarUrl && (
+        this.data.avatarUrl.startsWith('wxfile://') ||
+        this.data.avatarUrl.startsWith('http://tmp') ||
+        this.data.avatarUrl.startsWith('tmp/')
+      )
+
+      if (isTempAvatar) {
+        try {
+          backendAvatarPath = await this.uploadAvatarFile(this.data.avatarUrl, user.openid)
+          if (backendAvatarPath) {
+            user.avatar = backendAvatarPath
+          }
+        } catch (uploadErr) {
+          console.warn('头像上传后端异常，本次以本地临时路径展示:', uploadErr)
+        }
+      }
 
       wx.hideLoading()
       this.handleLoginSuccess(res, loginRes.code, backendAvatarPath)
@@ -236,9 +257,11 @@ Page({
     const token = (data && data.token) || util.createToken()
     const user = (data && data.user) || {}
     const realNickname = (this.data.nickName || '').trim()
+    const finalAvatar = backendAvatarPath || user.avatar || ''
     const userInfo = {
       nickName: user.nickname || realNickname || user.username,
-      avatarUrl: formatImageUrl(user.avatar) || (backendAvatarPath ? formatImageUrl(backendAvatarPath) : '') || this.data.avatarUrl || '',
+      avatarUrl: formatImageUrl(finalAvatar) || this.data.avatarUrl || '',
+      avatar: finalAvatar,
       username: user.username || user.openid,
       code,
       ...user
