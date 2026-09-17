@@ -14,6 +14,8 @@ import com.mall.mapper.PaymentMapper;
 import com.mall.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.mall.util.WechatPayUtil;
+import java.security.PrivateKey;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -166,20 +168,73 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean handleWechatNotify(String notifyBody, String signature, String timestamp, String nonce) {
-        // TODO: 真实模式需要实现完整验签 + 解密报文 + 处理业务
-        // 1. 用 APIv3Key + 证书序列号找到对应的证书公钥, 验签(signature 基于 SHA256-RSA2048)
-        // 2. 用 APIv3Key 对 resource.ciphertext 做 AES-256-GCM 解密, 得到 out_trade_no / transaction_id / trade_state
-        // 3. 根据 out_trade_no 找 Payment, 判断支付状态:
-        //    SUCCESS    → 更新 payment.payStatus=1, order.status=1, order.payTime=now
-        //    REFUND     → 更新为已退款
-        //    PAYERROR   → 更新为失败
-        // 4. 返回给微信 {"code":"SUCCESS","message":""} 防止微信重试
-        // 完整实现请参考微信支付官方文档 pay.weixin.qq.com/docs/merchant/apis/native-payment/notify-payment-result.html
-
-        // --- 以下是 Mock 占位逻辑, 真实环境请替换 ---
         log.info("[微信回调] 收到通知 body={}", notifyBody);
-        return true;
+        try {
+            if (!org.springframework.util.StringUtils.hasText(notifyBody)) {
+                log.warn("[微信回调] 通知体为空");
+                return false;
+            }
+
+            Map<String, Object> rootMap = JSON.parseObject(notifyBody);
+            String eventType = (String) rootMap.get("event_type");
+            if (!"TRANSACTION.SUCCESS".equals(eventType)) {
+                log.info("[微信回调] 非支付成功事件, eventType={}", eventType);
+                return true;
+            }
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> resource = (Map<String, Object>) rootMap.get("resource");
+            if (resource == null) {
+                log.warn("[微信回调] 缺少 resource 节点");
+                return false;
+            }
+
+            String ciphertext = (String) resource.get("ciphertext");
+            String associatedData = (String) resource.get("associated_data");
+            String resourceNonce = (String) resource.get("nonce");
+
+            PayConfig.Wechat wx = payConfig.getWechat();
+            String plainJson = WechatPayUtil.decryptAesGcm(wx.getApiV3Key(), associatedData, resourceNonce, ciphertext);
+            log.info("[微信回调] 解密明文={}", plainJson);
+
+            Map<String, Object> plainMap = JSON.parseObject(plainJson);
+            String outTradeNo = (String) plainMap.get("out_trade_no");
+            String transactionId = (String) plainMap.get("transaction_id");
+            String tradeState = (String) plainMap.get("trade_state");
+
+            if ("SUCCESS".equalsIgnoreCase(tradeState)) {
+                Payment payment = paymentMapper.selectOne(
+                        new LambdaQueryWrapper<Payment>()
+                                .eq(Payment::getPaymentNo, outTradeNo));
+                if (payment == null) {
+                    log.error("[微信回调] 未找到对应支付流水 outTradeNo={}", outTradeNo);
+                    return false;
+                }
+
+                if (PAY_STATUS_SUCCESS != payment.getPayStatus()) {
+                    payment.setPayStatus(PAY_STATUS_SUCCESS);
+                    payment.setTransactionId(transactionId);
+                    payment.setPayTime(LocalDateTime.now());
+                    payment.setNotifyData(plainJson);
+                    paymentMapper.updateById(payment);
+
+                    Order order = orderMapper.selectById(payment.getOrderId());
+                    if (order != null && ORDER_STATUS_PENDING_PAY == order.getStatus()) {
+                        order.setStatus(ORDER_STATUS_PENDING_SHIP);
+                        order.setPayTime(LocalDateTime.now());
+                        order.setPayType(payment.getPayType());
+                        orderMapper.updateById(order);
+                        log.info("[微信回调] 订单支付成功 流水={} 订单号={}", outTradeNo, order.getOrderNo());
+                    }
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            log.error("[微信回调] 处理异常", e);
+            return false;
+        }
     }
 
     @Override
@@ -380,28 +435,31 @@ public class PaymentServiceImpl implements PaymentService {
         log.info("[微信下单] tradeType={} body={}", tradeType, reqBodyJson);
 
         // === 2. 生成 Authorization 头 ===
-        // 微信V3鉴权: Authorization: WECHATPAY2-SHA256-RSA2048 mchid="xxx",nonce_str="xxx",timestamp="xxx",serial_no="xxx",signature="xxx"
-        String nonceStr = UUID.randomUUID().toString().replace("-", "");
-        String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
-        String message = "POST\n/v3/pay/transactions/" + tradeType.toLowerCase() + "\n" + timestamp + "\n" + nonceStr + "\n" + reqBodyJson + "\n";
-        String signature = signWithRSA(message);
-        String authorization = "WECHATPAY2-SHA256-RSA2048 " +
-                "mchid=\"" + wx.getMchId() + "\"," +
-                "nonce_str=\"" + nonceStr + "\"," +
-                "timestamp=\"" + timestamp + "\"," +
-                "serial_no=\"" + wx.getCertSerialNo() + "\"," +
-                "signature=\"" + signature + "\"";
+        PrivateKey privateKey = WechatPayUtil.loadPrivateKey(wx.getPrivateKeyPath());
+        String canonicalUrl = "/v3/pay/transactions/" + tradeType.toLowerCase();
+        String authorization = WechatPayUtil.buildAuthorizationHeader(
+                wx.getMchId(),
+                wx.getCertSerialNo(),
+                "POST",
+                canonicalUrl,
+                reqBodyJson,
+                privateKey);
 
         // === 3. 发请求 ===
         // 用 hutool HttpRequest 调微信 REST API
-        String url = "https://api.mch.weixin.qq.com/v3/pay/transactions/" + tradeType.toLowerCase();
-        String respBody = cn.hutool.http.HttpRequest.post(url)
+        String url = "https://api.mch.weixin.qq.com" + canonicalUrl;
+        cn.hutool.http.HttpRequest httpReq = cn.hutool.http.HttpRequest.post(url)
                 .header("Authorization", authorization)
                 .header("Content-Type", "application/json")
+                .header("Accept", "application/json")
                 .body(reqBodyJson)
-                .timeout(10000)
-                .execute()
-                .body();
+                .timeout(10000);
+
+        if (org.springframework.util.StringUtils.hasText(wx.getPublicKeyId())) {
+            httpReq.header("Wechatpay-Serial", wx.getPublicKeyId());
+        }
+
+        String respBody = httpReq.execute().body();
 
         log.info("[微信下单] 响应={}", respBody);
 
@@ -427,13 +485,19 @@ public class PaymentServiceImpl implements PaymentService {
 
             case "JSAPI":
                 // JSAPI支付: 微信返回 prepay_id, 前端调 wx.requestPayment 需要签名参数
+                String prepayId = (String) wxResp.get("prepay_id");
+                String timeStamp = String.valueOf(System.currentTimeMillis() / 1000);
+                String nonceStr = UUID.randomUUID().toString().replace("-", "");
+                String packageVal = "prepay_id=" + prepayId;
+                String paySign = WechatPayUtil.buildJsapiPaySign(wx.getAppId(), timeStamp, nonceStr, packageVal, privateKey);
+
                 payParams.put("appId", wx.getAppId());
-                payParams.put("timeStamp", String.valueOf(System.currentTimeMillis() / 1000));
-                payParams.put("nonceStr", UUID.randomUUID().toString().replace("-", ""));
-                payParams.put("package", "prepay_id=" + wxResp.get("prepay_id"));
+                payParams.put("timeStamp", timeStamp);
+                payParams.put("nonceStr", nonceStr);
+                payParams.put("package", packageVal);
                 payParams.put("signType", "RSA");
-                payParams.put("paySign", "...需要用商户私钥对参数签名, 代码略...");
-                payment.setPrepayId((String) wxResp.get("prepay_id"));
+                payParams.put("paySign", paySign);
+                payment.setPrepayId(prepayId);
                 break;
 
             case "H5":
@@ -451,21 +515,6 @@ public class PaymentServiceImpl implements PaymentService {
 
         payment.setRequestParam(reqBodyJson);
         return payParams;
-    }
-
-    /**
-     * RSA 私钥签名 (SHA256-RSA2048)
-     * 真实实现需要: 读取 pay.wechat.private-key-path 指向的 apiclient_key.pem
-     * 伪代码如下, 上线时请用 Java Security API 实现
-     */
-    private String signWithRSA(String message) throws Exception {
-        // TODO: 实现 RSA 签名
-        // 1. KeyFactory.getInstance("RSA")
-        // 2. PKCS8EncodedKeySpec 加载 private key bytes
-        // 3. Signature.getInstance("SHA256withRSA")
-        // 4. signature.initSign(privateKey); signature.update(message.getBytes("UTF-8"))
-        // 5. Base64.getEncoder().encodeToString(signature.sign())
-        throw new UnsupportedOperationException("RSA签名未实现 - 使用Mock模式可绕过, 真实微信支付需补全此方法");
     }
 
     /** 生成支付流水号: P + yyyyMMddHHmmss + 4位随机 */

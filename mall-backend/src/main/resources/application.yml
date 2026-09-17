@@ -60,35 +60,41 @@ logging:
 file:
 #  base-server: http://2uu4401930iw.vicp.fun:32105/sunny_file
   base-server: http://localhost:8081/sunny_file
-  base-path: D:\\soft\\apache-tomcat-8.5.63\\webapps\\sunny_file
+#  base-path: D:\\soft\\apache-tomcat-8.5.63\\webapps\\sunny_file
+  base-path: D:\\apache-tomcat-8.5.42-report-8081\\webapps\\sunny_file
 
 # ==================== 支付配置 ====================
 pay:
   mock:
-    # 开发阶段默认开启 Mock, 不依赖真实商户号
-    # 上线前把 enabled 改成 false, 然后填下面 wechat 的真实参数
-    enabled: true
+    # 真实微信支付模式
+    enabled: false
     success-rate: 100
     delay-ms: 1500
   wechat:
-    # ====== 真实微信支付V3参数(上线时填写) ======
-    mch-id: ""
-    app-id: ""
-    api-v3-key: ""
-    private-key-path: ""
-    cert-serial-no: ""
+    # ====== 真实微信支付V3参数 ======
+    # 商户号
+    mch-id: "1750578769"
+    # app-id
+    app-id: "wx9d59f08ad0da2b25"
+    # 商户 APIv3 密钥
+    api-v3-key: "aB3dE5gH7jK9mN1pQ3sT5vW7yZ9bCdEf"
+    # 商户证书序列号
+    public-key-id: "PUB_KEY_ID_0117505787692026091700112067005202"
+    # 商户私钥文件路径
+    private-key-path: "classpath:cert/apiclient_key.pem"
+    # 商户证书序列号
+    cert-serial-no: "337E4BE447863F90580A0467D1016CC9CB2B9B7F"
     # 支付回调通知URL: 必须是 https 公网地址, 微信会 POST 过来
-    # 本地开发可以用 ngrok / cpolar 等内网穿透工具临时暴露
-    notify-url: "https://your-domain.com/api/payment/wechat/notify"
-    refund-notify-url: "https://your-domain.com/api/payment/wechat/refund-notify"
+    notify-url: "https://2uu4401930iw.vicp.fun/api/payment/wechat/notify"
+    refund-notify-url: "https://2uu4401930iw.vicp.fun/api/payment/wechat/refund-notify"
     # APP:原生APP支付  JSAPI:公众号/小程序  H5:微信外H5  NATIVE:扫码
-    trade-type: "APP"
+    trade-type: "JSAPI"
 
 # ==================== 微信基础/小程序配置 ====================
 wechat:
   miniapp:
     # 微信小程序 AppID 与 AppSecret，上线时填写
-    app-id: "wxc86fce4522f0739f"
-    secret: "88d43de40711d118196a830d5acfa62a"
+    app-id: "wx9d59f08ad0da2b25"
+    secret: "12b7f59a44b0922d3a4efe6a96192968"
     # 是否支持 Mock 模式（未配置秘钥或联调时自动兼容）
     mock: false
