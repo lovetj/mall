@@ -232,12 +232,14 @@
 
 .form-panel {
   width: 100%;
-  max-height: 88vh;
+  max-height: 92vh;
   background: #ffffff;
   border-radius: 32rpx 32rpx 0 0;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  /* 兜底: 防止任何子元素溢出时盖到头部/底部按钮上 */
+  overflow: hidden;
 }
 
 .form-header {
@@ -263,8 +265,10 @@
 }
 
 .form-body {
+  /* flex:1 分配 panel 剩余高度(header/footer 固定), min-height:0 允许收缩并内部滚动,
+     不再用固定 max-height 估算, 避免盒子过高导致内容溢出盖住底部按钮 */
   flex: 1;
-  max-height: calc(88vh - 240rpx);
+  min-height: 0;
   padding: 24rpx 36rpx;
   box-sizing: border-box;
 }
