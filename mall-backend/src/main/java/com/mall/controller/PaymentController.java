@@ -119,15 +119,15 @@ public class PaymentController {
     public String wechatNotify(@RequestBody String body,
                                @RequestHeader(value = "Wechatpay-Signature", required = false) String signature,
                                @RequestHeader(value = "Wechatpay-Timestamp", required = false) String timestamp,
-                               @RequestHeader(value = "Wechatpay-Nonce", required = false) String nonce) {
-        log.info("[微信回调] signature={} timestamp={} nonce={}", signature, timestamp, nonce);
-        log.info("[微信回调] body={}", body);
-
-        boolean ok = paymentService.handleWechatNotify(body, signature, timestamp, nonce);
+                               @RequestHeader(value = "Wechatpay-Nonce", required = false) String nonce,
+                               @RequestHeader(value = "Wechatpay-Serial", required = false) String serialNo) {
+        boolean ok = paymentService.handleWechatNotify(body, signature, timestamp, nonce, serialNo);
         if (ok) {
+            log.info("[微信回调] 处理成功 outTrade 请参照服务日志");
             return "{\"code\":\"SUCCESS\",\"message\":\"成功\"}";
         }
         // 微信会按策略重试(15秒/15分钟/1小时...)
+        log.warn("[微信回调] 校验失败或处理失败, 返回FAIL待微信重试");
         return "{\"code\":\"FAIL\",\"message\":\"处理失败\"}";
     }
 

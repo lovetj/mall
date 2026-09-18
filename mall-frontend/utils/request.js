@@ -3,7 +3,52 @@
  * 支持 get, post, put, delete, uploadFile
  */
 const config = require('./config')
+const auth = require('./auth')
+const guard = require('./guard')
 const { KEYS } = require('./keys')
+
+/** 401 处理的防抖标记：避免并发请求触发多次重复提示与重复刷新 */
+let unauthorizedHandled = false
+let unauthorizedTimer = null
+
+/**
+ * 处理登录态失效(401)：
+ * 1) 清除本地登录态并刷新全局为"未登录"，使各页面不再展示过期缓存的用户信息
+ * 2) 弹出统一的登录引导弹窗(复用现有 openLoginModal 组件)提示用户去登录
+ */
+function handleUnauthorized(message) {
+  if (!unauthorizedHandled) {
+    unauthorizedHandled = true
+    auth.clearLoginState()
+    try {
+      const app = getApp()
+      if (app) {
+        app.globalData.isLogin = false
+        app.globalData.userInfo = null
+        if (typeof app.markTabsNeedRefresh === 'function') app.markTabsNeedRefresh()
+        if (typeof app.refreshAllTabPages === 'function') app.refreshAllTabPages()
+      }
+    } catch (e) {
+      console.warn('401刷新全局状态异常:', e)
+    }
+    // 弹出登录引导弹窗(现有登录弹窗组件), 登录成功后回跳当前页
+    try {
+      const pages = getCurrentPages()
+      const current = pages.length ? pages[pages.length - 1] : null
+      const redirect = current ? '/' + current.route : ''
+      guard.ensureLogin({
+        content: message || '登录已过期，请重新登录',
+        redirect
+      })
+    } catch (e) {
+      console.warn('401弹出登录引导异常:', e)
+    }
+  }
+  if (unauthorizedTimer) clearTimeout(unauthorizedTimer)
+  unauthorizedTimer = setTimeout(() => {
+    unauthorizedHandled = false
+  }, 2000)
+}
 
 function request(options) {
   return new Promise((resolve, reject) => {
@@ -28,10 +73,7 @@ function request(options) {
         if (res.statusCode === 200 && res.data && res.data.code === 200) {
           resolve(res.data.data)
         } else if (res.statusCode === 401 || (res.data && res.data.code === 401)) {
-          wx.showToast({
-            title: (res.data && res.data.message) || '未登录或登录已过期',
-            icon: 'none'
-          })
+          handleUnauthorized((res.data && res.data.message) || '未登录或登录已过期')
           reject(res.data || { code: 401, message: '未登录' })
         } else {
           const errMsg = (res.data && res.data.message) || `请求失败(${res.statusCode})`

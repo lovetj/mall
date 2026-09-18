@@ -6,6 +6,33 @@
  */
 const api = require('./api')
 const util = require('./util')
+const auth = require('./auth')
+
+/** 轮询支付结果(微信回调异步, 收银台成功后需确认后端流水已入账) */
+function pollPaymentStatus(paymentNo, options) {
+  const opts = options || {}
+  const times = opts.times || 10
+  const interval = opts.interval || 1000
+  let attempts = 0
+
+  return new Promise((resolve) => {
+    const timer = setInterval(() => {
+      attempts += 1
+      api.queryPaymentStatus(paymentNo).then((resp) => {
+        const paid = !!(resp && resp.payParams && resp.payParams.paid)
+        if (paid || attempts >= times) {
+          clearInterval(timer)
+          resolve(paid)
+        }
+      }).catch(() => {
+        if (attempts >= times) {
+          clearInterval(timer)
+          resolve(false)
+        }
+      })
+    }, interval)
+  })
+}
 
 /**
  * 发起在线支付（支持指定支付方式：1微信支付，2支付宝支付）
@@ -31,10 +58,14 @@ function requestPay({ orderId, orderNo, payAmount, payType = 1 }) {
     wx.showLoading({ title: `正在发起${payTypeName}...`, mask: true })
 
     // 1. 创建支付流水 (payType: 1 微信支付, 2 支付宝, platform: 'mp' 小程序)
+    //    同时带上本地缓存的 openid, 供后端 JSAPI 下单使用
+    const loginState = auth.getLoginState()
+    const userOpenid = (loginState && loginState.userInfo && loginState.userInfo.openid) || ''
     api.createPayment({
       orderId,
       payType: targetPayType,
-      platform: 'mp'
+      platform: 'mp',
+      openid: userOpenid || undefined
     }).then((resp) => {
       wx.hideLoading()
       if (!resp) {
@@ -63,7 +94,7 @@ function requestPay({ orderId, orderNo, payAmount, payType = 1 }) {
                 wx.hideLoading()
                 if (mockRes && mockRes.payParams && mockRes.payParams.paid) {
                   util.toast('支付成功', 'success')
-                  resolve({ success: true, mock: true, paymentNo: resp.paymentNo, payType: targetPayType })
+                  resolve({ success: true, mock: true, paymentNo: resp.paymentNo, payType: targetPayType, paid: true })
                 } else {
                   util.toast('模拟支付失败')
                   resolve({ success: false, cancel: false, message: '模拟支付失败' })
@@ -106,6 +137,14 @@ function requestPay({ orderId, orderNo, payAmount, payType = 1 }) {
           return
         }
 
+        console.log('[pay] 准备调起微信支付 wx.requestPayment，参数:', {
+          timeStamp: String(payParams.timeStamp),
+          nonceStr: payParams.nonceStr,
+          package: payParams.package,
+          signType: payParams.signType || 'RSA',
+          paySign: payParams.paySign
+        })
+
         wx.requestPayment({
           timeStamp: String(payParams.timeStamp),
           nonceStr: payParams.nonceStr,
@@ -113,15 +152,31 @@ function requestPay({ orderId, orderNo, payAmount, payType = 1 }) {
           signType: payParams.signType || 'RSA',
           paySign: payParams.paySign,
           success: (payRes) => {
+            console.log('[pay] 微信支付成功:', payRes)
             util.toast('支付成功', 'success')
-            resolve({ success: true, mock: false, res: payRes, payType: targetPayType })
+            // 收银台成功仅代表用户付款, 仍需等待后端异步回调入账; 轮询确认流水真正到账
+            pollPaymentStatus(resp.paymentNo).then((paid) => {
+              resolve({ success: true, mock: false, res: payRes, payType: targetPayType, paymentNo: resp.paymentNo, paid })
+            })
           },
           fail: (err) => {
-            const isCancel = (err && err.errMsg && err.errMsg.indexOf('cancel') > -1)
+            console.error('[pay] wx.requestPayment 失败/取消:', err)
+            const errDetail = (err && (err.errMsg || err.message)) || ''
+            const isCancel = errDetail.indexOf('cancel') > -1 || errDetail.indexOf('fail cancel') > -1
             if (isCancel) {
               util.toast('已取消支付')
             } else {
-              util.toast('支付未完成')
+              // 微信开发者工具模拟器无法拉起真机支付收银台
+              if (errDetail.indexOf('requestPayment:fail') > -1 && errDetail.indexOf('function not supported') > -1) {
+                wx.showModal({
+                  title: '微信开发者工具提示',
+                  content: '微信开发者工具模拟器不支持直接拉起真实微信收银台，请使用开发者工具上方「预览」或「真机调试」在手机微信中进行真实支付测试。',
+                  showCancel: false,
+                  confirmColor: '#07c160'
+                })
+              } else {
+                util.toast(errDetail || '支付未完成')
+              }
             }
             resolve({ success: false, cancel: isCancel, err })
           }

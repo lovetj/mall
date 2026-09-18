@@ -67,7 +67,7 @@ file:
 pay:
   mock:
     # 真实微信支付模式
-    enabled: false
+    enabled: true
     success-rate: 100
     delay-ms: 1500
   wechat:
@@ -84,6 +84,10 @@ pay:
     private-key-path: "classpath:cert/apiclient_key.pem"
     # 商户证书序列号
     cert-serial-no: "337E4BE447863F90580A0467D1016CC9CB2B9B7F"
+    # 平台证书/平台公钥文件路径(回调验签用, 需在 cert 目录放置微信平台证书PUB_KEY.pem或平台证书pem)
+    platform-cert-path: "classpath:cert/apiclient_pub_key.pem"
+    # 平台证书/平台公钥序列号(公钥模式下等于 public-key-id)
+    platform-cert-serial-no: "PUB_KEY_ID_0117505787692026091700112067005202"
     # 支付回调通知URL: 必须是 https 公网地址, 微信会 POST 过来
     notify-url: "https://2uu4401930iw.vicp.fun/api/payment/wechat/notify"
     refund-notify-url: "https://2uu4401930iw.vicp.fun/api/payment/wechat/refund-notify"
@@ -96,5 +100,5 @@ wechat:
     # 微信小程序 AppID 与 AppSecret，上线时填写
     app-id: "wx9d59f08ad0da2b25"
     secret: "12b7f59a44b0922d3a4efe6a96192968"
-    # 是否支持 Mock 模式（未配置秘钥或联调时自动兼容）
+    # 是否开启 Mock 模式（未配置秘钥或联调时自动兼容）
     mock: false

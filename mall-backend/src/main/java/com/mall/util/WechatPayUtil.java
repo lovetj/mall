@@ -14,8 +14,10 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.Signature;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
@@ -26,6 +28,7 @@ public class WechatPayUtil {
 
     private static final String SCHEMA = "WECHATPAY2-SHA256-RSA2048";
     private static final Map<String, PrivateKey> PRIVATE_KEY_CACHE = new ConcurrentHashMap<>();
+    private static final Map<String, PublicKey> PUBLIC_KEY_CACHE = new ConcurrentHashMap<>();
 
     /**
      * 加载商户私钥（支持 classpath: 与本地绝对/相对路径）
@@ -40,35 +43,7 @@ public class WechatPayUtil {
             return cached;
         }
 
-        byte[] keyBytes;
-        if (privateKeyPath.startsWith("classpath:")) {
-            String path = privateKeyPath.substring("classpath:".length());
-            if (path.startsWith("/")) {
-                path = path.substring(1);
-            }
-            ClassPathResource resource = new ClassPathResource(path);
-            try (InputStream is = resource.getInputStream()) {
-                keyBytes = FileCopyUtils.copyToByteArray(is);
-            }
-        } else {
-            File file = new File(privateKeyPath);
-            if (!file.exists()) {
-                ClassPathResource resource = new ClassPathResource(privateKeyPath);
-                if (resource.exists()) {
-                    try (InputStream is = resource.getInputStream()) {
-                        keyBytes = FileCopyUtils.copyToByteArray(is);
-                    }
-                } else {
-                    throw new IllegalArgumentException("未找到私钥文件: " + privateKeyPath);
-                }
-            } else {
-                try (InputStream is = new FileInputStream(file)) {
-                    keyBytes = FileCopyUtils.copyToByteArray(is);
-                }
-            }
-        }
-
-        String keyStr = new String(keyBytes, StandardCharsets.UTF_8);
+        String keyStr = readCertContent(privateKeyPath, "私钥");
         String cleanKey = keyStr
                 .replace("-----BEGIN PRIVATE KEY-----", "")
                 .replace("-----END PRIVATE KEY-----", "")
@@ -84,6 +59,77 @@ public class WechatPayUtil {
     }
 
     /**
+     * 加载微信支付平台公钥/平台证书公钥（用于回调验签，支持 classpath: 与本地绝对/相对路径）
+     * 兼容标准公钥 PEM 与平台证书 PEM(PUBLIC KEY / CERTIFICATE 均支持提取 SPKI 公钥)
+     */
+    public static PublicKey loadPublicKey(String publicKeyPath) throws Exception {
+        if (!StringUtils.hasText(publicKeyPath)) {
+            throw new IllegalArgumentException("平台公钥路径 platformCertPath 不能为空");
+        }
+
+        PublicKey cached = PUBLIC_KEY_CACHE.get(publicKeyPath);
+        if (cached != null) {
+            return cached;
+        }
+
+        String keyStr = readCertContent(publicKeyPath, "平台公钥");
+        String cleanKey = keyStr
+                .replace("-----BEGIN PUBLIC KEY-----", "")
+                .replace("-----END PUBLIC KEY-----", "")
+                .replace("-----BEGIN CERTIFICATE-----", "")
+                .replace("-----END CERTIFICATE-----", "")
+                .replaceAll("\\s+", "");
+
+        byte[] decoded = Base64.getDecoder().decode(cleanKey);
+        PublicKey publicKey;
+        try {
+            // 优先按 SPKI 公钥解析
+            X509EncodedKeySpec keySpec = new X509EncodedKeySpec(decoded);
+            publicKey = KeyFactory.getInstance("RSA").generatePublic(keySpec);
+        } catch (Exception e) {
+            // 回退: 解析 X.509 证书, 提取其中的公钥
+            java.security.cert.CertificateFactory cf = java.security.cert.CertificateFactory.getInstance("X.509");
+            java.security.cert.Certificate cert = cf.generateCertificate(new java.io.ByteArrayInputStream(keyStr.getBytes(StandardCharsets.UTF_8)));
+            publicKey = cert.getPublicKey();
+        }
+
+        PUBLIC_KEY_CACHE.put(publicKeyPath, publicKey);
+        return publicKey;
+    }
+
+    /** 读取 PEM 证书/密钥文件内容, 支持 classpath: 与本地绝对/相对路径 */
+    private static String readCertContent(String path, String desc) throws Exception {
+        byte[] bytes;
+        if (path.startsWith("classpath:")) {
+            String p = path.substring("classpath:".length());
+            if (p.startsWith("/")) {
+                p = p.substring(1);
+            }
+            ClassPathResource resource = new ClassPathResource(p);
+            try (InputStream is = resource.getInputStream()) {
+                bytes = FileCopyUtils.copyToByteArray(is);
+            }
+        } else {
+            File file = new File(path);
+            if (file.exists()) {
+                try (InputStream is = new FileInputStream(file)) {
+                    bytes = FileCopyUtils.copyToByteArray(is);
+                }
+            } else {
+                ClassPathResource resource = new ClassPathResource(path);
+                if (resource.exists()) {
+                    try (InputStream is = resource.getInputStream()) {
+                        bytes = FileCopyUtils.copyToByteArray(is);
+                    }
+                } else {
+                    throw new IllegalArgumentException("未找到" + desc + "文件: " + path);
+                }
+            }
+        }
+        return new String(bytes, StandardCharsets.UTF_8);
+    }
+
+    /**
      * 对数据进行 SHA256-RSA 签名并返回 Base64 字符串
      */
     public static String signSha256Rsa(String message, PrivateKey privateKey) throws Exception {
@@ -91,6 +137,23 @@ public class WechatPayUtil {
         signature.initSign(privateKey);
         signature.update(message.getBytes(StandardCharsets.UTF_8));
         return Base64.getEncoder().encodeToString(signature.sign());
+    }
+
+    /**
+     * 使用公钥对 Base64 编码的 SHA256-RSA 签名进行验签（微信回调平台签名验证）
+     *
+     * @return true 验签通过; false 签名非法
+     */
+    public static boolean verifySha256Rsa(String message, String signatureBase64, PublicKey publicKey) {
+        try {
+            Signature signature = Signature.getInstance("SHA256withRSA");
+            signature.initVerify(publicKey);
+            signature.update(message.getBytes(StandardCharsets.UTF_8));
+            return signature.verify(Base64.getDecoder().decode(signatureBase64));
+        } catch (Exception e) {
+            log.warn("[微信回调] 验签异常: {}", e.getMessage());
+            return false;
+        }
     }
 
     /**

@@ -201,16 +201,15 @@ Page({
         payAmount: orderVo.payAmount,
         payType: this.data.payType || 1
       }).then((payResult) => {
-        if (payResult && payResult.success) {
-          // 支付成功 -> 跳转待发货订单列表
+        // 仅在确认流水已入账(paid)且支付成功时进入待发货; 否则回到待付款
+        if (payResult && payResult.success && payResult.paid) {
           setTimeout(() => {
             wx.redirectTo({ url: '/pages/orders/orders?status=undelivered' })
-          }, 800)
+          }, 500)
         } else {
-          // 未支付或取消 -> 跳转待付款订单列表
           setTimeout(() => {
             wx.redirectTo({ url: '/pages/orders/orders?status=unpaid' })
-          }, 600)
+          }, 500)
         }
       })
     }).catch((err) => {

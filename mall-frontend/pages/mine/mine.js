@@ -34,6 +34,10 @@ Page(Object.assign({}, modalMixin, {
 
     const isLogin = auth.isLogin()
     this.setData({ isLogin })
+    if (!isLogin) {
+      // 未登录时清空本地残留的用户信息, 避免头部仍展示上一次登录的昵称/头像
+      this.setData({ userInfo: null, cartCount: 0 })
+    }
 
     // 刚从登录页返回：本次 onShow 的"登录拦截"被跳过（用户可能已登录或放弃了登录）
     const leaving = guard.consumeLeavingFlag()

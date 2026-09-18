@@ -20,12 +20,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.security.PublicKey;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 支付服务实现
@@ -70,6 +72,16 @@ public class PaymentServiceImpl implements PaymentService {
     private static final int PAY_TYPE_ALIPAY = 2;
     private static final int PAY_TYPE_MOCK = 99;
 
+    /** 回调时间窗(秒): 超过该范围视为重放/异常, 拒绝处理 */
+    private static final long NOTIFY_MAX_AGE_SECONDS = 300;
+
+    /** 按订单 ID 粒度的锁, 防止同一订单并发创建多条待支付流水 */
+    private final Map<String, Object> orderLocks = new ConcurrentHashMap<>();
+
+    private Object lockForOrder(String orderId) {
+        return orderLocks.computeIfAbsent(orderId, k -> new Object());
+    }
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public PayResponseDTO createPayment(PayRequestDTO request, String userId, String clientIp) {
@@ -97,41 +109,47 @@ public class PaymentServiceImpl implements PaymentService {
         String paymentNo = generatePaymentNo();
 
         // 3. 查是否已有进行中的支付流水(同一订单待支付状态, 避免重复下单)
-        Payment exist = paymentMapper.selectOne(
-                new LambdaQueryWrapper<Payment>()
-                        .eq(Payment::getOrderId, order.getId())
-                        .eq(Payment::getPayStatus, PAY_STATUS_PENDING)
-                        .last("LIMIT 1"));
+        //    用订单粒度锁保证"查重+insert"原子性, 避免并发同订单生成多条待支付流水
+        Payment payment;
+        synchronized (lockForOrder(order.getId())) {
+            Payment exist = paymentMapper.selectOne(
+                    new LambdaQueryWrapper<Payment>()
+                            .eq(Payment::getOrderId, order.getId())
+                            .eq(Payment::getPayStatus, PAY_STATUS_PENDING)
+                            .last("LIMIT 1"));
 
-        if (exist != null) {
-            // 已有待支付流水, 如果切换了支付方式则更新支付方式后复用
-            if (request.getPayType() != null && !request.getPayType().equals(exist.getPayType())) {
-                exist.setPayType(request.getPayType());
+            if (exist != null) {
+                // 已有待支付流水, 如果切换了支付方式则更新支付方式后复用
+                if (request.getPayType() != null && !request.getPayType().equals(exist.getPayType())) {
+                    exist.setPayType(request.getPayType());
+                }
+                // 重新生成新的支付流水号, 避免重复提交微信时出现商户单号冲突或参数不一致报错
+                exist.setPaymentNo(generatePaymentNo());
                 paymentMapper.updateById(exist);
+                log.info("[支付] 更新已有待支付流水 paymentNo={}, payType={}", exist.getPaymentNo(), exist.getPayType());
+                return buildPayResponse(exist, request);
             }
-            log.info("[支付] 复用已有待支付流水 paymentNo={}, payType={}", exist.getPaymentNo(), exist.getPayType());
-            return buildPayResponse(exist);
+
+            if (request.getPayType() == null || (request.getPayType() != PAY_TYPE_WECHAT && request.getPayType() != PAY_TYPE_ALIPAY)) {
+                request.setPayType(PAY_TYPE_WECHAT);
+            }
+
+            // 4. 创建新支付流水
+            payment = new Payment();
+            payment.setPaymentNo(paymentNo);
+            payment.setOrderId(order.getId());
+            payment.setOrderNo(order.getOrderNo());
+            payment.setUserId(userId);
+            payment.setPayAmount(order.getPayAmount());
+            payment.setPayType(request.getPayType());
+            payment.setPayStatus(PAY_STATUS_PENDING);
+            payment.setRequestParam(JSON.toJSONString(request));
+            payment.setClientIp(clientIp);
+            // 支付有效期: 30分钟
+            payment.setExpireTime(LocalDateTime.now().plusMinutes(30));
+
+            paymentMapper.insert(payment);
         }
-
-        if (request.getPayType() == null || (request.getPayType() != PAY_TYPE_WECHAT && request.getPayType() != PAY_TYPE_ALIPAY)) {
-            request.setPayType(PAY_TYPE_WECHAT);
-        }
-
-        // 4. 创建新支付流水
-        Payment payment = new Payment();
-        payment.setPaymentNo(paymentNo);
-        payment.setOrderId(order.getId());
-        payment.setOrderNo(order.getOrderNo());
-        payment.setUserId(userId);
-        payment.setPayAmount(order.getPayAmount());
-        payment.setPayType(request.getPayType());
-        payment.setPayStatus(PAY_STATUS_PENDING);
-        payment.setRequestParam(JSON.toJSONString(request));
-        payment.setClientIp(clientIp);
-        // 支付有效期: 30分钟
-        payment.setExpireTime(LocalDateTime.now().plusMinutes(30));
-
-        paymentMapper.insert(payment);
 
         boolean isMock = payConfig.getMock().isEnabled();
         Map<String, Object> payParams;
@@ -169,11 +187,47 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean handleWechatNotify(String notifyBody, String signature, String timestamp, String nonce) {
-        log.info("[微信回调] 收到通知 body={}", notifyBody);
+    public boolean handleWechatNotify(String notifyBody, String signature, String timestamp, String nonce, String serialNo) {
         try {
-            if (!org.springframework.util.StringUtils.hasText(notifyBody)) {
-                log.warn("[微信回调] 通知体为空");
+            // 0. 入参 & 平台签名校验(先于业务处理, 任何一项不满足即拒绝, 让微信按策略重试)
+            if (!org.springframework.util.StringUtils.hasText(notifyBody)
+                    || !org.springframework.util.StringUtils.hasText(signature)
+                    || !org.springframework.util.StringUtils.hasText(timestamp)
+                    || !org.springframework.util.StringUtils.hasText(nonce)
+                    || !org.springframework.util.StringUtils.hasText(serialNo)) {
+                log.warn("[微信回调] 回调缺少必要参数(signature/timestamp/nonce/serial/body)");
+                return false;
+            }
+
+            PayConfig.Wechat wx = payConfig.getWechat();
+
+            // 时间窗校验(防重放): |now - timestamp| 不超过 NOTIFY_MAX_AGE_SECONDS
+            long nowSec = System.currentTimeMillis() / 1000;
+            long ts;
+            try {
+                ts = Long.parseLong(timestamp.trim());
+            } catch (NumberFormatException e) {
+                log.warn("[微信回调] 时间戳非法 timestamp={}", timestamp);
+                return false;
+            }
+            if (Math.abs(nowSec - ts) > NOTIFY_MAX_AGE_SECONDS) {
+                log.warn("[微信回调] 回调时间戳超出时间窗, 疑似重放 news={}, ts={}", nowSec, ts);
+                return false;
+            }
+
+            // 序列号校验: 必须与配置的平台公钥/证书序列号一致
+            String expectSerial = org.springframework.util.StringUtils.hasText(wx.getPlatformCertSerialNo())
+                    ? wx.getPlatformCertSerialNo().trim() : wx.getPublicKeyId();
+            if (!org.springframework.util.StringUtils.hasText(expectSerial) || !expectSerial.equals(serialNo.trim())) {
+                log.warn("[微信回调] 平台序列号不匹配 serial={}, expect={}", serialNo, expectSerial);
+                return false;
+            }
+
+            // 平台签名验签: 报文 = timestamp\nnonce\nbody\n
+            PublicKey platformPublicKey = WechatPayUtil.loadPublicKey(wx.getPlatformCertPath());
+            String verifyMessage = timestamp + "\n" + nonce + "\n" + notifyBody + "\n";
+            if (!WechatPayUtil.verifySha256Rsa(verifyMessage, signature, platformPublicKey)) {
+                log.warn("[微信回调] 平台签名验签失败, 拒绝处理");
                 return false;
             }
 
@@ -195,9 +249,7 @@ public class PaymentServiceImpl implements PaymentService {
             String associatedData = (String) resource.get("associated_data");
             String resourceNonce = (String) resource.get("nonce");
 
-            PayConfig.Wechat wx = payConfig.getWechat();
             String plainJson = WechatPayUtil.decryptAesGcm(wx.getApiV3Key(), associatedData, resourceNonce, ciphertext);
-            log.info("[微信回调] 解密明文={}", plainJson);
 
             Map<String, Object> plainMap = JSON.parseObject(plainJson);
             String outTradeNo = (String) plainMap.get("out_trade_no");
@@ -210,6 +262,17 @@ public class PaymentServiceImpl implements PaymentService {
                                 .eq(Payment::getPaymentNo, outTradeNo));
                 if (payment == null) {
                     log.error("[微信回调] 未找到对应支付流水 outTradeNo={}", outTradeNo);
+                    return false;
+                }
+
+                // 金额二次对账: 回调金额(单位分)必须与本地流水金额一致, 防止金额错配
+                int expectFen = payment.getPayAmount().multiply(new BigDecimal(100)).intValue();
+                @SuppressWarnings("unchecked")
+                Map<String, Object> cbAmount = (Map<String, Object>) plainMap.get("amount");
+                Object totalObj = cbAmount == null ? null : cbAmount.get("total");
+                if (totalObj == null || Integer.parseInt(String.valueOf(totalObj)) != expectFen) {
+                    log.error("[微信回调] 金额不一致, 拒绝入账 outTradeNo={}, cbAmountFen={}, expectFen={}",
+                            outTradeNo, totalObj, expectFen);
                     return false;
                 }
 
@@ -232,7 +295,7 @@ public class PaymentServiceImpl implements PaymentService {
             }
             return true;
         } catch (Exception e) {
-            log.error("[微信回调] 处理异常", e);
+            log.error("[微信回调] 处理异常: {}", e.getMessage());
             return false;
         }
     }
@@ -330,15 +393,32 @@ public class PaymentServiceImpl implements PaymentService {
 
     // ==================== 内部工具方法 ====================
 
-    private PayResponseDTO buildPayResponse(Payment payment) {
+    private PayResponseDTO buildPayResponse(Payment payment, PayRequestDTO request) {
         PayResponseDTO resp = new PayResponseDTO();
-        resp.setSuccess(true);
         resp.setPaymentNo(payment.getPaymentNo());
         resp.setOrderNo(payment.getOrderNo());
         resp.setPayAmount(payment.getPayAmount());
         resp.setPayType(payment.getPayType());
-        resp.setPayParams(buildMockParams()); // Mock 模式下复用
-        return resp;
+
+        if (payConfig.getMock().isEnabled()) {
+            resp.setSuccess(true);
+            resp.setPayParams(buildMockParams());
+            return resp;
+        }
+
+        try {
+            Map<String, Object> payParams = callWechatPayApi(payment, request);
+            paymentMapper.updateById(payment);
+            resp.setSuccess(true);
+            resp.setPayParams(payParams);
+            log.info("[支付] 复用流水成功拉起真实支付 流水={}", payment.getPaymentNo());
+            return resp;
+        } catch (Exception e) {
+            log.error("[支付] 复用流水调用支付接口失败", e);
+            resp.setSuccess(false);
+            resp.setMessage("支付发起失败, 请稍后重试");
+            return resp;
+        }
     }
 
     /** Mock 模式的 payParams: 前端展示模拟拉起支付, 然后让用户手动点"已付款" */
@@ -390,7 +470,7 @@ public class PaymentServiceImpl implements PaymentService {
         Map<String, Object> body = new HashMap<>();
         body.put("appid", wx.getAppId());
         body.put("mchid", wx.getMchId());
-        body.put("description", "阳光农场-订单:" + payment.getOrderNo());
+        body.put("description", "商城-订单:" + payment.getOrderNo());
         body.put("out_trade_no", payment.getPaymentNo());
         body.put("notify_url", wx.getNotifyUrl());
         Map<String, Object> amount = new HashMap<>();
@@ -409,8 +489,9 @@ public class PaymentServiceImpl implements PaymentService {
                     }
                 }
                 if (!org.springframework.util.StringUtils.hasText(openid)) {
-                    throw new IllegalStateException("JSAPI支付需要 openid，请使用微信登录或传入 openid");
+                    throw new IllegalStateException("JSAPI微信支付缺少用户openid, 请通过微信授权登录后再支付");
                 }
+                log.info("[微信JSAPI下单] 付款用户 openid={}, paymentNo={}, orderNo={}", openid, payment.getPaymentNo(), payment.getOrderNo());
                 Map<String, Object> payer = new HashMap<>();
                 payer.put("openid", openid);
                 body.put("payer", payer);
@@ -454,10 +535,6 @@ public class PaymentServiceImpl implements PaymentService {
                 .header("Accept", "application/json")
                 .body(reqBodyJson)
                 .timeout(10000);
-
-        if (org.springframework.util.StringUtils.hasText(wx.getPublicKeyId())) {
-            httpReq.header("Wechatpay-Serial", wx.getPublicKeyId());
-        }
 
         String respBody = httpReq.execute().body();
 

@@ -51,6 +51,10 @@ public class PayConfig {
         private String certSerialNo = "";
         /** 微信支付公钥ID (若使用平台公钥模式) */
         private String publicKeyId = "";
+        /** 平台证书/平台公钥文件路径 (回调验签用, 与商户私钥路径同风格 classpath: 或本地路径) */
+        private String platformCertPath = "";
+        /** 平台证书/平台公钥对应的序列号 (公钥模式下等于 publicKeyId) */
+        private String platformCertSerialNo = "";
         /** 支付回调通知URL(必须是 https 公网地址, 微信POST过来) */
         private String notifyUrl = "";
         /** 退款回调URL */

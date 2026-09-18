@@ -21,8 +21,15 @@ public interface PaymentService {
     /**
      * 处理微信支付回调通知
      * (真实模式使用, Mock模式不需要)
+     *
+     * @param notifyBody  回调报文原始 body
+     * @param signature   header Wechatpay-Signature (平台签名)
+     * @param timestamp   header Wechatpay-Timestamp
+     * @param nonce       header Wechatpay-Nonce
+     * @param serialNo    header Wechatpay-Serial (平台公钥/证书序列号)
+     * @return true 已确认并处理; false 校验失败/处理失败(微信会重试)
      */
-    boolean handleWechatNotify(String notifyBody, String signature, String timestamp, String nonce);
+    boolean handleWechatNotify(String notifyBody, String signature, String timestamp, String nonce, String serialNo);
 
     /**
      * 主动查询支付状态(轮询兜底)
